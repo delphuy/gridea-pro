@@ -45,3 +45,8 @@ func (f *ImageHostingFacade) DeleteImage(hash string) error {
 func (f *ImageHostingFacade) UploadImagesFromFrontend(files []domain.UploadedFile) ([]string, error) {
 	return f.svc().UploadFromFrontend(files)
 }
+
+// TestUpload 上传并删除一张 1x1 测试图，验证当前图床配置是否可用，返回测试图 URL。
+func (f *ImageHostingFacade) TestUpload() (string, error) {
+	return f.svc().TestUpload()
+}
