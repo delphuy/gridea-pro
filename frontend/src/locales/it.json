@@ -265,6 +265,7 @@
       "masterKey": "Master Key",
       "serverUrls": "URL server",
       "masterKeyTip": "Utilizzata per eliminare i commenti",
+      "serverUrlsTip": "L'API internazionale di LeanCloud non è accessibile dalla Cina continentale; se l'invio dei commenti non riesce, collega un dominio API personalizzato nella console LeanCloud e inseriscilo qui (vuoto = dominio predefinito)",
       "saveSuccess": "Impostazioni commenti salvate"
     },
     "theme": {

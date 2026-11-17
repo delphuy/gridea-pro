@@ -250,6 +250,7 @@
       "masterKey": "Master Key",
       "serverUrls": "Server URLs",
       "masterKeyTip": "用于删除评论",
+      "serverUrlsTip": "LeanCloud 国际版 API 在大陆无法直连；若评论提交失败，请在 LeanCloud 控制台绑定自定义 API 域名后填入此处（留空使用默认域名）",
       "saveSuccess": "评论配置已保存"
     },
     "theme": {
@@ -455,7 +456,7 @@
       "giteePrefixPlaceholder": "如 images/，可留空",
       "giteePublicBase": "自定义访问域名",
       "giteePublicBasePlaceholder": "留空使用 https://gitee.com/<用户名>/<仓库>/raw/<分支>/",
-      "giteeRisk": "Gitee 图床限制：单文件不超过 1MB；把仓库当图床频繁提交大量文件，有被官方封禁仓库的风险，建议只存小图",
+      "giteeRisk": "Gitee 图床限制：单文件不超过 1MB；把仓库当图床频繁提交大量文件，有被官方封禁仓库的风险，建议只存小图。另外 raw 直链带 Referer 防盗链校验：应用内预览已自动处理，但直接在网页正文引用可能无法显示，正式配图建议使用 OSS",
       "ossAk": "AccessKeyId",
       "ossAkPlaceholder": "输入阿里云 AccessKeyId",
       "ossSk": "AccessKeySecret",

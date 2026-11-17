@@ -265,6 +265,7 @@
       "masterKey": "Master Key",
       "serverUrls": "Server URLs",
       "masterKeyTip": "댓글 삭제에 사용됨",
+      "serverUrlsTip": "LeanCloud 국제판 API는 중국 본토에서 직접 접근할 수 없습니다. 댓글 제출이 실패하면 LeanCloud 콘솔에서 사용자 지정 API 도메인을 바인딩한 후 여기에 입력하세요(비워 두면 기본 도메인 사용)",
       "saveSuccess": "댓글 설정 저장됨"
     },
     "theme": {

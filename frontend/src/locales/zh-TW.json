@@ -212,7 +212,7 @@
       "giteePrefixPlaceholder": "如 images/，可留空",
       "giteePublicBase": "自訂存取網域",
       "giteePublicBasePlaceholder": "留空使用 https://gitee.com/<使用者>/<倉庫>/raw/<分支>/",
-      "giteeRisk": "Gitee 圖床限制：單檔不超過 1MB；把倉庫當圖床頻繁提交大量檔案，有被官方封禁倉庫的風險，建議只存小圖",
+      "giteeRisk": "Gitee 圖床限制：單檔不超過 1MB；把倉庫當圖床頻繁提交大量檔案，有被官方封禁倉庫的風險，建議只存小圖。另外 raw 直鏈帶 Referer 防盜鏈校驗：應用內預覽已自動處理，但直接在網頁正文引用可能無法顯示，正式配圖建議使用 OSS",
       "ossAk": "AccessKeyId",
       "ossAkPlaceholder": "輸入阿里雲 AccessKeyId",
       "ossSk": "AccessKeySecret",
@@ -298,6 +298,7 @@
       "masterKey": "Master Key",
       "serverUrls": "Server URLs",
       "masterKeyTip": "用於刪除留言",
+      "serverUrlsTip": "LeanCloud 國際版 API 在大陸無法直連；若留言提交失敗，請在 LeanCloud 控制台綁定自訂 API 網域後填入此處（留空使用預設網域）",
       "saveSuccess": "留言設定已儲存"
     },
     "theme": {

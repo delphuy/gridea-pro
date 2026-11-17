@@ -251,21 +251,6 @@ v-for="item in navItems" :key="item.key"
         </div>
       </div>
 
-      <!-- 窗口 -->
-      <div v-if="activeTab === 'window'" class="animate-fade-in">
-        <h2 class="text-xl font-semibold mb-6 text-foreground">{{ t('settings.window.title') }}</h2>
-        <div class="flex justify-between items-start py-4 border-b border-border gap-6">
-          <div class="flex-1 min-w-0">
-            <div class="text-sm font-medium text-foreground mb-1">{{ t('settings.window.minimizeToTray') }}</div>
-            <div class="text-xs text-muted-foreground">{{ t('settings.window.minimizeToTrayDesc') }}</div>
-          </div>
-          <div class="flex-shrink-0 pt-1">
-            <Switch :checked="minimizeToTray" size="sm"
-              @update:checked="(v: boolean) => onToggleMinimizeToTray(v)" />
-          </div>
-        </div>
-      </div>
-
       <!-- 关于 -->
       <div v-if="activeTab === 'about'" class="animate-fade-in">
         <h2 class="text-xl font-semibold mb-6 text-foreground">{{ t('nav.about') }}</h2>
@@ -327,7 +312,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSiteStore } from '@/stores/site'
 import { toast } from '@/helpers/toast'
-import { GetVersion, GetMinimizeToTray, SetMinimizeToTray } from '@/wailsjs/go/app/App'
+import { GetVersion } from '@/wailsjs/go/app/App'
 import Draggable from 'vuedraggable'
 import AppSetting from './components/AppSetting.vue'
 import DeleteConfirmDialog from '@/components/ConfirmDialog/DeleteConfirmDialog.vue'
@@ -352,7 +337,6 @@ import {
   PencilIcon,
   SparklesIcon,
   BellIcon,
-  WindowIcon,
   ArrowPathIcon,
   ArrowTopRightOnSquareIcon,
 } from '@heroicons/vue/24/outline'
@@ -416,7 +400,6 @@ const navItems = computed(() => [
   { key: 'sites', icon: GlobeAltIcon, label: t('settings.sites.title') },
   { key: 'ai', icon: SparklesIcon, label: t('settings.ai.title') },
   { key: 'notifications', icon: BellIcon, label: t('settings.notifications.title') },
-  { key: 'window', icon: WindowIcon, label: t('settings.window.title') },
   { key: 'about', icon: InformationCircleIcon, label: t('nav.about') },
 ])
 
@@ -674,37 +657,11 @@ const onToggleDeployNotify = async (val: boolean) => {
   }
 }
 
-// ─── 窗口设置 ───────────────────────────────────────────
-// 「关闭时最小化到托盘」（应用级，默认关闭）
-const minimizeToTray = ref(false)
-
-const loadWindowSetting = async () => {
-  try {
-    minimizeToTray.value = await GetMinimizeToTray()
-  } catch (e) {
-    console.error('Failed to load minimize-to-tray setting:', e)
-  }
-}
-
-const onToggleMinimizeToTray = async (val: boolean) => {
-  const previous = minimizeToTray.value
-  minimizeToTray.value = val
-  try {
-    await SetMinimizeToTray(val)
-    toast.success(t('settings.window.saveSuccess'))
-  } catch (e: any) {
-    console.error('Save minimize-to-tray setting failed:', e)
-    minimizeToTray.value = previous
-    toast.error(e?.message || t('settings.window.saveFailed'))
-  }
-}
-
 onMounted(async () => {
   currentLanguage.value = locale.value as LocaleType
   await loadSites()
   await loadAISetting()
   await loadNotifySetting()
-  await loadWindowSetting()
 })
 
 const loadSites = async () => {

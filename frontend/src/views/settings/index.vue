@@ -42,6 +42,12 @@ ref="lineRef" class="tab-transition absolute bottom-0 h-[2px] bg-primary rounded
           <TabPanel class="focus:outline-none">
             <image-hosting-setting></image-hosting-setting>
           </TabPanel>
+          <TabPanel class="focus:outline-none">
+            <comment-setting></comment-setting>
+          </TabPanel>
+          <TabPanel class="focus:outline-none">
+            <window-setting></window-setting>
+          </TabPanel>
         </TabPanels>
       </div>
     </TabGroup>
@@ -57,10 +63,12 @@ import PwaSetting from './components/PwaSetting.vue'
 import SeoSetting from './components/SeoSetting.vue'
 import CdnSetting from './components/CdnSetting.vue'
 import ImageHostingSetting from './components/ImageHostingSetting.vue'
+import CommentSetting from './components/CommentSetting.vue'
+import WindowSetting from './components/WindowSetting.vue'
 
 const { t } = useI18n()
 
-const tabs = ['network', 'pwa', 'seo', 'cdn', 'imageHosting']
+const tabs = ['network', 'pwa', 'seo', 'cdn', 'imageHosting', 'comment', 'window']
 const currentTab = ref('network')
 
 const tabListRef = ref<any>(null)

@@ -18,6 +18,9 @@
   <div class="mt-4">
     <Label class="mb-2 block">{{ t('settings.comment.serverUrls') }} <span class="text-destructive">*</span></Label>
     <Input v-model="config.serverURLs" />
+    <div v-if="serverUrlsTip" class="ml-1 mt-2 text-xs text-muted-foreground/60 flex items-start gap-1">
+      {{ serverUrlsTip }}
+    </div>
   </div>
 </template>
 
@@ -28,4 +31,9 @@ import { useI18n } from 'vue-i18n'
 
 const config = defineModel<any>('config', { required: true })
 const { t } = useI18n()
+
+// 可选提示：Valine 在 serverURLs 输入框下方展示（LeanCloud 国际版大陆直连受限说明）
+defineProps<{
+  serverUrlsTip?: string
+}>()
 </script>

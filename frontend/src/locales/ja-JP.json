@@ -265,6 +265,7 @@
       "masterKey": "Master Key",
       "serverUrls": "Server URLs",
       "masterKeyTip": "コメントの削除に使用されます",
+      "serverUrlsTip": "LeanCloud 国際版 API は中国本土から直接アクセスできません。コメント送信が失敗する場合は、LeanCloud コンソールでカスタム API ドメインをバインドした上でここに入力してください（空欄の場合は既定のドメインを使用）",
       "saveSuccess": "コメント設定を保存しました"
     },
     "theme": {
