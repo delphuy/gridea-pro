@@ -307,6 +307,7 @@ func Run(assets embed.FS, version string) {
 			services.SeoSetting,
 			services.CdnSetting,
 			services.CdnUpload,
+			services.MediaRef,
 			services.PwaSetting,
 			services.AI,
 			services.OAuth,

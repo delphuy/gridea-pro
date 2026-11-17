@@ -409,7 +409,27 @@
       "testUploadSuccess": "上传成功",
       "testUploadFailed": "测试上传失败",
       "saveSuccess": "CDN 配置已保存",
-      "saveFailed": "CDN 配置保存失败"
+      "saveFailed": "CDN 配置保存失败",
+      "gov": {
+        "title": "图片引用治理",
+        "desc": "扫描站点本地图片，找出未被任何文章或配置引用的文件。部署时也只推送被引用的图片。",
+        "scanBtn": "扫描未引用图片",
+        "scanning": "扫描中...",
+        "summary": "本地媒体文件共 {total} 个，未被引用 {count} 个",
+        "moveBtn": "移入回收站",
+        "moving": "移入中...",
+        "moved": "已移入回收站 {count} 个文件，下次部署时远端副本自动清理",
+        "clean": "未发现未引用图片",
+        "trashTitle": "回收站",
+        "trashEmpty": "回收站为空",
+        "trashSummary": "{count} 个文件 · {size}",
+        "emptyBtn": "清空回收站",
+        "emptyConfirm": "确认清空？删除后不可恢复",
+        "emptying": "清空中...",
+        "emptied": "已清空回收站",
+        "note": "移入回收站的图片：output 里的副本下次渲染时自动清理，CDN 仓库里的副本下次部署时自动删除。误删可在站点目录的 .trash- 文件夹里手动移回恢复。",
+        "failed": "操作失败"
+      }
     },
     "imageHosting": {
       "title": "图床",

@@ -409,7 +409,27 @@
       "testUploadSuccess": "Upload successful",
       "testUploadFailed": "Test upload failed",
       "saveSuccess": "CDN settings saved",
-      "saveFailed": "Failed to save CDN settings"
+      "saveFailed": "Failed to save CDN settings",
+      "gov": {
+        "title": "Image Reference Governance",
+        "desc": "Scan local site images and find files not referenced by any post or config. Deploys also push referenced images only.",
+        "scanBtn": "Scan unreferenced images",
+        "scanning": "Scanning...",
+        "summary": "{total} local media files, {count} unreferenced",
+        "moveBtn": "Move to trash",
+        "moving": "Moving...",
+        "moved": "Moved {count} files to trash; remote copies will be cleaned on next deploy",
+        "clean": "No unreferenced images found",
+        "trashTitle": "Trash",
+        "trashEmpty": "Trash is empty",
+        "trashSummary": "{count} files · {size}",
+        "emptyBtn": "Empty trash",
+        "emptyConfirm": "Confirm? This cannot be undone",
+        "emptying": "Emptying...",
+        "emptied": "Trash emptied",
+        "note": "Trashed images: copies in output are removed on next render, CDN copies are deleted on next deploy. To restore, move files back from the site's .trash- folder.",
+        "failed": "Operation failed"
+      }
     },
     "ai": {
       "title": "AI Settings",

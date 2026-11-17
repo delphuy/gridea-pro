@@ -424,7 +424,27 @@
       "testUploadSuccess": "上傳成功",
       "testUploadFailed": "測試上傳失敗",
       "saveSuccess": "CDN 設定已儲存",
-      "saveFailed": "CDN 設定儲存失敗"
+      "saveFailed": "CDN 設定儲存失敗",
+      "gov": {
+        "title": "圖片引用治理",
+        "desc": "掃描站點本地圖片，找出未被任何文章或設定引用的檔案。部署時也只推送被引用的圖片。",
+        "scanBtn": "掃描未引用圖片",
+        "scanning": "掃描中...",
+        "summary": "本地媒體檔案共 {total} 個，未被引用 {count} 個",
+        "moveBtn": "移入回收站",
+        "moving": "移入中...",
+        "moved": "已移入回收站 {count} 個檔案，下次部署時遠端副本自動清理",
+        "clean": "未發現未引用圖片",
+        "trashTitle": "回收站",
+        "trashEmpty": "回收站為空",
+        "trashSummary": "{count} 個檔案 · {size}",
+        "emptyBtn": "清空回收站",
+        "emptyConfirm": "確認清空？刪除後不可復原",
+        "emptying": "清空中...",
+        "emptied": "已清空回收站",
+        "note": "移入回收站的圖片：output 裡的副本下次渲染時自動清理，CDN 儲存庫裡的副本下次部署時自動刪除。誤刪可在站點目錄的 .trash- 資料夾裡手動移回復原。",
+        "failed": "操作失敗"
+      }
     },
     "ai": {
       "title": "AI 設定",

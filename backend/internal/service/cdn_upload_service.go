@@ -489,13 +489,41 @@ func (s *CdnUploadService) UploadMediaForDeploy(ctx context.Context, appDir stri
 		}
 	}
 
+	// ── 引用过滤（图片治理 4.1）：只推送被文章 / 配置引用的本地媒体文件 ──
+	// 纯外链图片（md 里全是 https:// 外链）的站点，语料里没有任何本地路径引用，
+	// 全部跳过，不再向 CDN 仓库推无用图片。
+	// 注意：下方孤儿远端清理依然基于"物理存在的全集"对比——未引用但还在本地
+	// 的文件只是不上传，绝不会被从远端删除；只有进了回收站（磁盘上消失）的
+	// 文件才会触发远端清理。
+	allFiles := filesToUpload
+	filesToUpload = nil
+	corpus, corpusErr := BuildMediaRefCorpus(appDir)
+	if corpusErr != nil {
+		// 语料构建失败：退回旧行为（全部上传），宁可多推不可漏推
+		logger(fmt.Sprintf("警告：扫描图片引用失败，本次将上传全部媒体文件: %v", corpusErr))
+		filesToUpload = allFiles
+	} else {
+		for _, f := range allFiles {
+			if mediaReferenced(corpus, f.remotePath) {
+				filesToUpload = append(filesToUpload, f)
+			}
+		}
+		if skipped := len(allFiles) - len(filesToUpload); skipped > 0 {
+			logger(fmt.Sprintf("本地共 %d 个媒体文件，其中 %d 个未被引用，已跳过推送", len(allFiles), skipped))
+		}
+	}
+
 	res.Total = len(filesToUpload)
 	if res.Total == 0 {
-		logger("没有需要上传的媒体文件")
+		if len(allFiles) > 0 {
+			logger(fmt.Sprintf("所有 %d 个本地媒体文件均未被引用，无需上传到 CDN", len(allFiles)))
+		} else {
+			logger("没有需要上传的媒体文件")
+		}
 		return res, nil
 	}
 
-	logger(fmt.Sprintf("发现 %d 个媒体文件，开始上传到 CDN...", res.Total))
+	logger(fmt.Sprintf("发现 %d 个被引用的媒体文件，开始上传到 CDN...", res.Total))
 
 	// 使用 errgroup 控制并发（限制 5 并发）。
 	// 单文件失败不终止 errgroup（保持"尽量完成"语义），但会被收集到 failures 列表。
@@ -533,11 +561,13 @@ func (s *CdnUploadService) UploadMediaForDeploy(ctx context.Context, appDir stri
 	res.Success = successCount
 	res.Failures = failures
 
-	// 清理孤儿（PR #96 / issue #47）：manifest 中有、但本次扫描不存在的 remotePath。
+	// 清理孤儿（PR #96 / issue #47）：manifest 中有、但本地磁盘已不存在的 remotePath。
 	// 只基于 manifest 做对比，不做"列整库 diff"，天然安全：
 	// 如果用户在同一个 CDN 仓库里还有其它非 Gridea 上传的文件，不会被误删。
-	localSet := make(map[string]struct{}, len(filesToUpload))
-	for _, f := range filesToUpload {
+	// 对比基准是"物理存在的全集"（含未引用文件），不是"本次上传的引用子集"——
+	// 引用过滤只影响"传不传"，不能让"还在本地但未引用"的文件被误判为已删除。
+	localSet := make(map[string]struct{}, len(allFiles))
+	for _, f := range allFiles {
 		localSet[f.remotePath] = struct{}{}
 	}
 	var orphans []string

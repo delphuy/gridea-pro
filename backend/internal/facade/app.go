@@ -37,6 +37,7 @@ type AppServices struct {
 	CdnSetting           *CdnSettingFacade
 	PwaSetting           *PwaSettingFacade
 	CdnUpload            *CdnUploadFacade
+	MediaRef             *MediaRefFacade
 	AI                   *AIFacade
 	OAuth                *OAuthFacade
 	Update               *UpdateFacade
@@ -162,6 +163,9 @@ func NewAppServices(appDir string, assets embed.FS) *AppServices {
 	imageHostingRepo := repository.NewImageHostingRepository(appDir)
 	imageHostingService := service.NewImageHostingService(imageHostingRepo)
 
+	// 2.6 图片引用治理（孤儿扫描 / 回收站）
+	mediaRefService := service.NewMediaRefService(appDir)
+
 	// 3. Wrap with Facades
 	return &AppServices{
 		Category:             NewCategoryFacade(categoryService, postRepo),
@@ -180,6 +184,7 @@ func NewAppServices(appDir string, assets embed.FS) *AppServices {
 		CdnSetting:           NewCdnSettingFacade(cdnSettingRepo),
 		PwaSetting:           NewPwaSettingFacade(pwaSettingRepo, appDir),
 		CdnUpload:            NewCdnUploadFacade(cdnUploadService),
+		MediaRef:             NewMediaRefFacade(mediaRefService),
 		AI:                   NewAIFacade(aiSettingRepo, aiService),
 		OAuth:                NewOAuthFacade(oauthService),
 		Update:               NewUpdateFacade(),
@@ -295,6 +300,7 @@ func (s *AppServices) UpdateAppDir(appDir string) {
 	s.CdnSetting.repo.Store(newServices.CdnSetting.repository())
 	s.PwaSetting.repo.Store(newServices.PwaSetting.repository())
 	s.CdnUpload.internal.Store(newServices.Services.CdnUpload)
+	s.MediaRef.internal.Store(newServices.MediaRef.svc())
 	s.AI.repo.Store(newServices.AI.repository())
 	s.AI.service.Store(newServices.AI.svc())
 	// OAuth 服务是应用级单例（跨站点共享 Keychain 状态），但代理配置要跟随

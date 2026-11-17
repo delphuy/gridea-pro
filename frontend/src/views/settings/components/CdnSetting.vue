@@ -144,6 +144,80 @@
           </div>
         </div>
       </template>
+
+      <!-- 图片引用治理（与 CDN 启用状态无关） -->
+      <div class="pt-4 mt-2 border-t border-border/60">
+        <div class="grid grid-cols-[180px_1fr] items-start gap-4">
+          <div></div>
+          <div class="max-w-xl space-y-3">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <div class="text-sm font-medium">{{ t('settings.cdn.gov.title') }}</div>
+                <div class="text-xs text-muted-foreground mt-0.5">{{ t('settings.cdn.gov.desc') }}</div>
+              </div>
+              <Button
+                variant="outline"
+                class="h-8 shrink-0 text-xs justify-center rounded-full border border-primary/20 text-primary/80 hover:bg-primary/5 hover:text-primary cursor-pointer"
+                :disabled="scanLoading"
+                @click="doScan">
+                {{ scanLoading ? t('settings.cdn.gov.scanning') : t('settings.cdn.gov.scanBtn') }}
+              </Button>
+            </div>
+
+            <!-- 扫描结果 -->
+            <div v-if="scanResult" class="rounded-md border p-3 text-xs space-y-2">
+              <div class="text-muted-foreground">
+                {{ t('settings.cdn.gov.summary', { total: scanResult.total, count: scanResult.orphans.length }) }}
+              </div>
+              <div v-if="scanResult.orphans.length === 0" class="text-emerald-600 dark:text-emerald-400">
+                {{ t('settings.cdn.gov.clean') }}
+              </div>
+              <template v-else>
+                <ul class="max-h-44 overflow-y-auto space-y-1">
+                  <li v-for="o in scanResult.orphans" :key="o.relPath" class="flex items-center justify-between gap-3">
+                    <span class="truncate font-mono text-[11px] text-foreground/80">{{ o.relPath }}</span>
+                    <span class="shrink-0 text-muted-foreground">{{ formatSize(o.sizeByte) }}</span>
+                  </li>
+                </ul>
+                <div class="flex items-center gap-2 pt-1">
+                  <Button
+                    variant="outline"
+                    class="h-7 text-xs justify-center rounded-full border border-destructive/30 text-destructive/90 hover:bg-destructive/10 cursor-pointer"
+                    :disabled="moveLoading"
+                    @click="doMove">
+                    {{ moveLoading ? t('settings.cdn.gov.moving') : t('settings.cdn.gov.moveBtn') }}
+                  </Button>
+                </div>
+              </template>
+            </div>
+
+            <!-- 回收站 -->
+            <div class="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/30 px-3 py-2">
+              <div class="text-xs">
+                <span class="font-medium">{{ t('settings.cdn.gov.trashTitle') }}</span>
+                <span class="text-muted-foreground ml-2">
+                  {{ trash && trash.fileCount > 0 ? t('settings.cdn.gov.trashSummary', { count: trash.fileCount, size: formatSize(trash.sizeByte) }) : t('settings.cdn.gov.trashEmpty') }}
+                </span>
+              </div>
+              <Button
+                v-if="trash && trash.fileCount > 0"
+                variant="outline"
+                class="h-7 shrink-0 text-xs justify-center rounded-full cursor-pointer"
+                :class="emptyConfirm
+                  ? 'border-destructive/50 bg-destructive/10 text-destructive'
+                  : 'border-border text-muted-foreground hover:text-foreground'"
+                :disabled="emptyLoading"
+                @click="doEmptyTrash">
+                {{ emptyLoading ? t('settings.cdn.gov.emptying') : (emptyConfirm ? t('settings.cdn.gov.emptyConfirm') : t('settings.cdn.gov.emptyBtn')) }}
+              </Button>
+            </div>
+
+            <div class="text-xs text-muted-foreground/80 leading-relaxed">
+              {{ t('settings.cdn.gov.note') }}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <footer-box>
@@ -179,6 +253,7 @@ import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { GetCdnSetting, SaveCdnSettingFromFrontend } from '@/wailsjs/go/facade/CdnSettingFacade'
 import { TestCdnUpload } from '@/wailsjs/go/facade/CdnUploadFacade'
+import { ScanOrphanImages, MoveOrphanImagesToTrash, ListMediaTrash, EmptyMediaTrash } from '@/wailsjs/go/facade/MediaRefFacade'
 import { domain } from '@/wailsjs/go/models'
 
 const { t } = useI18n()
@@ -277,4 +352,97 @@ const testUpload = async () => {
     testLoading.value = false
   }
 }
+
+// ── 图片引用治理（孤儿扫描 / 回收站）──
+interface MediaFileLite {
+  relPath: string
+  sizeByte: number
+}
+
+const scanLoading = ref(false)
+const moveLoading = ref(false)
+const emptyLoading = ref(false)
+// 清空回收站采用"二次点击确认"：第一次点击进入确认态（4 秒后自动退出），再点一次才执行
+const emptyConfirm = ref(false)
+const scanResult = ref<{ total: number; orphans: MediaFileLite[] } | null>(null)
+const trash = ref<{ fileCount: number; sizeByte: number } | null>(null)
+let emptyConfirmTimer: ReturnType<typeof setTimeout> | null = null
+
+const formatSize = (n: number): string => {
+  if (!n || n < 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let i = 0
+  let v = n
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024
+    i++
+  }
+  return `${v >= 100 ? Math.round(v) : v.toFixed(1)} ${units[i]}`
+}
+
+const doScan = async () => {
+  scanLoading.value = true
+  try {
+    const res = await ScanOrphanImages()
+    scanResult.value = { total: res?.total ?? 0, orphans: res?.orphans ?? [] }
+  } catch (e: any) {
+    console.error(e)
+    toast.error(e?.message || t('settings.cdn.gov.failed'))
+  } finally {
+    scanLoading.value = false
+  }
+}
+
+const doMove = async () => {
+  moveLoading.value = true
+  try {
+    const res = await MoveOrphanImagesToTrash()
+    toast.success(t('settings.cdn.gov.moved', { count: (res?.moved ?? []).length }))
+    scanResult.value = null
+    await loadTrash()
+  } catch (e: any) {
+    console.error(e)
+    toast.error(e?.message || t('settings.cdn.gov.failed'))
+  } finally {
+    moveLoading.value = false
+  }
+}
+
+const loadTrash = async () => {
+  try {
+    const res = await ListMediaTrash()
+    trash.value = { fileCount: res?.fileCount ?? 0, sizeByte: res?.sizeByte ?? 0 }
+  } catch (e) {
+    console.error('Failed to list media trash', e)
+  }
+}
+
+const doEmptyTrash = async () => {
+  if (!emptyConfirm.value) {
+    emptyConfirm.value = true
+    if (emptyConfirmTimer) clearTimeout(emptyConfirmTimer)
+    emptyConfirmTimer = setTimeout(() => {
+      emptyConfirm.value = false
+    }, 4000)
+    return
+  }
+  emptyLoading.value = true
+  try {
+    await EmptyMediaTrash()
+    toast.success(t('settings.cdn.gov.emptied'))
+    emptyConfirm.value = false
+    if (emptyConfirmTimer) {
+      clearTimeout(emptyConfirmTimer)
+      emptyConfirmTimer = null
+    }
+    await loadTrash()
+  } catch (e: any) {
+    console.error(e)
+    toast.error(e?.message || t('settings.cdn.gov.failed'))
+  } finally {
+    emptyLoading.value = false
+  }
+}
+
+onMounted(loadTrash)
 </script>
