@@ -163,12 +163,15 @@ func openInTerminal(path string) {
 	}
 }
 
-func Run(assets embed.FS, version string) {
+func Run(assets embed.FS, version string, icon []byte) {
 	// 把 main 侧 ldflags 注入的版本号写入 version 包，作为全局唯一真源
 	// （main 无法直接导入 internal/version，所以由 boot 做桥接）
 	if version != "" {
 		versionpkg.Version = version
 	}
+
+	// 托盘图标字节（main 侧 go:embed 注入），语言无关，先存起来
+	trayIconBytes = icon
 
 	// 初始化 ConfigManager
 	configManager, err := config.NewConfigManager()
@@ -208,14 +211,14 @@ func Run(assets embed.FS, version string) {
 
 	application := app.NewApp(appDir, services, version)
 
+	// 设置页开启「关闭时最小化到托盘」时，注册托盘（boot 持有 appCtx 与托盘实现）
+	app.OnMinimizeToTrayEnabled = ensureTray
+
 	// Capture context for safe shutdown
+	// 说明：开启「最小化到托盘」后，runtime.Quit 会被 OnBeforeClose 拦截，
+	// 因此所有主动退出路径都必须走 requestQuit()（先置位绕行标志再 Quit）。
 	quitHandler := func(_ *menu.CallbackData) {
-		if appCtx != nil {
-			wailsRuntime.Quit(appCtx)
-		} else {
-			log.Println("Context missing, performing force exit")
-			os.Exit(0)
-		}
+		requestQuit()
 	}
 
 	aboutHandler := func(_ *menu.CallbackData) {
@@ -233,6 +236,11 @@ func Run(assets embed.FS, version string) {
 	menuAboutHandler = aboutHandler
 	menuQuitHandler = quitHandler
 	menuAppDir = appDir
+
+	// 启动时若已开启「关闭时最小化到托盘」，注册托盘图标（幂等）
+	if configManager != nil && configManager.GetMinimizeToTray() {
+		ensureTray()
+	}
 
 	// Windows/Linux 使用 Frameless 窗口，前端自绘窗口控制按钮
 	// macOS 保持原生标题栏 + 交通灯按钮
@@ -256,6 +264,19 @@ func Run(assets embed.FS, version string) {
 		},
 		BackgroundColour: &options.RGBA{R: 255, G: 255, B: 255, A: 1},
 		StartHidden:      true,
+		// 开启「关闭时最小化到托盘」后，点关闭按钮 = 隐藏窗口到托盘；
+		// requestQuit() 置位的绕行标志让主动退出（托盘/菜单「退出」）照常退出。
+		OnBeforeClose: func(ctx context.Context) bool {
+			if quitRequested.Load() {
+				return false
+			}
+			cm, err := config.NewConfigManager()
+			if err == nil && cm.GetMinimizeToTray() {
+				wailsRuntime.WindowHide(ctx)
+				return true
+			}
+			return false
+		},
 		OnStartup: func(ctx context.Context) {
 			appCtx = ctx // Capture context
 			application.Startup(ctx)
@@ -268,19 +289,21 @@ func Run(assets embed.FS, version string) {
 				}
 			})
 
-			// 监听前端语言切换事件，运行时重建菜单（仅 macOS 有原生菜单）
-			if !frameless {
-				wailsRuntime.EventsOn(ctx, "app:change-locale", func(optionalData ...interface{}) {
-					if len(optionalData) > 0 {
-						if locale, ok := optionalData[0].(string); ok {
-							SetLocale(locale)
+			// 监听前端语言切换事件：macOS 重建原生菜单；各平台同步重建托盘菜单文案。
+			// 注意：监听器不能放进「仅 macOS」分支——Windows(frameless) 也需要它来刷新托盘菜单。
+			wailsRuntime.EventsOn(ctx, "app:change-locale", func(optionalData ...interface{}) {
+				if len(optionalData) > 0 {
+					if locale, ok := optionalData[0].(string); ok {
+						SetLocale(locale)
+						if !frameless {
 							newMenu := buildMenu(menuApplication, menuAboutHandler, menuQuitHandler, menuAppDir)
 							wailsRuntime.MenuSetApplicationMenu(ctx, newMenu)
 							wailsRuntime.MenuUpdateApplicationMenu(ctx)
 						}
+						rebuildTrayMenu()
 					}
-				})
-			}
+				}
+			})
 		},
 		// StartHidden 下窗口需显式显示。前端 safeWindowShow 受 Wails 运行时注入时序影响，
 		// 挂载时机早于运行时就绪时会跳过显示，导致主窗口永久隐藏（#102）。
@@ -288,7 +311,11 @@ func Run(assets embed.FS, version string) {
 		OnDomReady: func(ctx context.Context) {
 			wailsRuntime.WindowShow(ctx)
 		},
-		OnShutdown: application.Shutdown,
+		// 退出前先摘除托盘图标并停掉托盘消息泵（未开启过托盘则为空操作）
+		OnShutdown: func(ctx context.Context) {
+			stopTray()
+			application.Shutdown(ctx)
+		},
 		Menu:       appMenu,
 		Bind: []interface{}{
 			application,

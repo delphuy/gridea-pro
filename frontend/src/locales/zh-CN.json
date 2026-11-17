@@ -529,6 +529,13 @@
       "saveSuccess": "通知设置已保存",
       "saveFailed": "通知设置保存失败"
     },
+    "window": {
+      "title": "窗口",
+      "minimizeToTray": "关闭时最小化到系统托盘",
+      "minimizeToTrayDesc": "开启后，点击窗口关闭按钮不会退出应用，而是最小化到系统托盘；左键点击托盘图标恢复窗口，右键菜单可选择退出。",
+      "saveSuccess": "窗口设置已保存",
+      "saveFailed": "窗口设置保存失败"
+    },
     "network": {
       "title": "配 置",
       "platform": "平 台",

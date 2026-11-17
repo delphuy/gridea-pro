@@ -42,6 +42,10 @@ type App struct {
 	resourceWatcher *service.ResourceWatcher
 }
 
+// OnMinimizeToTrayEnabled 由 boot 注入：设置页把「关闭时最小化到托盘」
+// 从关切换为开时调用，负责注册托盘图标（app 不直接依赖 boot，避免 import 环）。
+var OnMinimizeToTrayEnabled = func() {}
+
 func NewApp(appDir string, services *facade.AppServices, version string) *App {
 	return &App{
 		appDir:   appDir,
@@ -53,6 +57,31 @@ func NewApp(appDir string, services *facade.AppServices, version string) *App {
 // GetVersion 返回应用版本号，供前端调用
 func (a *App) GetVersion() string {
 	return a.version
+}
+
+// GetMinimizeToTray 获取「关闭时最小化到托盘」设置（应用级）
+func (a *App) GetMinimizeToTray() (bool, error) {
+	cm, err := config.NewConfigManager()
+	if err != nil {
+		return false, err
+	}
+	return cm.GetMinimizeToTray(), nil
+}
+
+// SetMinimizeToTray 保存「关闭时最小化到托盘」设置（应用级）；
+// 从关到开时同步确保托盘图标就位（boot 注入的钩子）。
+func (a *App) SetMinimizeToTray(enabled bool) error {
+	cm, err := config.NewConfigManager()
+	if err != nil {
+		return err
+	}
+	if err := cm.SaveMinimizeToTray(enabled); err != nil {
+		return err
+	}
+	if enabled {
+		OnMinimizeToTrayEnabled()
+	}
+	return nil
 }
 
 func (a *App) Startup(ctx context.Context) {

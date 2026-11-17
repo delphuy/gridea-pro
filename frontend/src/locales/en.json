@@ -480,6 +480,13 @@
       "saveSuccess": "Notification settings saved",
       "saveFailed": "Failed to save notification settings"
     },
+    "window": {
+      "title": "Window",
+      "minimizeToTray": "Minimize to system tray on close",
+      "minimizeToTrayDesc": "When enabled, clicking the close button hides the app to the system tray instead of quitting. Click the tray icon to restore the window, or right-click the icon and choose Quit.",
+      "saveSuccess": "Window setting saved",
+      "saveFailed": "Failed to save window setting"
+    },
     "network": {
       "title": "Server",
       "platform": "Platform",

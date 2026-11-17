@@ -475,6 +475,13 @@
       "saveSuccess": "Configurações de notificação salvas",
       "saveFailed": "Falha ao salvar configurações de notificação"
     },
+    "window": {
+      "title": "Janela",
+      "minimizeToTray": "Minimizar para a bandeja do sistema ao fechar",
+      "minimizeToTrayDesc": "Se ativado, o botão de fechar minimiza o app para a bandeja do sistema em vez de encerrar. Clique no ícone da bandeja para restaurar a janela, ou encerre pelo menu do botão direito.",
+      "saveSuccess": "Ajuste de janela salvo",
+      "saveFailed": "Falha ao salvar o ajuste de janela"
+    },
     "network": {
       "multiPlatformHint": "Você pode ativar várias plataformas ao mesmo tempo. A implantação publicará em todas as plataformas ativadas.",
       "enabled": "Ativado",

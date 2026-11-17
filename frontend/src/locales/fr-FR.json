@@ -475,6 +475,13 @@
       "saveSuccess": "Paramètres de notification enregistrés",
       "saveFailed": "Échec de l'enregistrement des paramètres de notification"
     },
+    "window": {
+      "title": "Fenêtre",
+      "minimizeToTray": "Réduire dans la barre système à la fermeture",
+      "minimizeToTrayDesc": "Si activé, le bouton de fermeture réduit l'application dans la barre système au lieu de la quitter. Cliquez sur l'icône de la barre pour restaurer la fenêtre, ou faites un clic droit pour quitter.",
+      "saveSuccess": "Paramètre de fenêtre enregistré",
+      "saveFailed": "Échec de l'enregistrement du paramètre de fenêtre"
+    },
     "network": {
       "multiPlatformHint": "Vous pouvez activer plusieurs plateformes à la fois. Le déploiement publiera sur toutes les plateformes activées.",
       "enabled": "Activé",

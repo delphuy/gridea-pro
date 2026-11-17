@@ -43,6 +43,8 @@ type AppConfig struct {
 	AISetting *domain.AISetting `json:"aiSetting,omitempty"`
 	// PlatformMeta 各平台连接状态元信息（非敏感，凭证在 Keychain）
 	PlatformMeta map[string]PlatformMeta `json:"platformMeta,omitempty"`
+	// MinimizeToTray 开启后关闭主窗口 = 最小化到系统托盘而非退出（应用级，默认关闭）
+	MinimizeToTray bool `json:"minimizeToTray,omitempty"`
 }
 
 // ConfigManager 负责管理 AppConfig 的加载和保存
@@ -193,6 +195,26 @@ func (m *ConfigManager) SaveAISetting(setting domain.AISetting) error {
 // 用于存放 AI 调用计数等设备级状态
 func (m *ConfigManager) AppConfigDir() string {
 	return m.configDir
+}
+
+// GetMinimizeToTray 获取「关闭时最小化到托盘」设置；读取失败按关闭处理（fail-safe）。
+func (m *ConfigManager) GetMinimizeToTray() bool {
+	cfg, err := m.LoadConfig()
+	if err != nil {
+		return false
+	}
+	return cfg.MinimizeToTray
+}
+
+// SaveMinimizeToTray 保存「关闭时最小化到托盘」设置。
+func (m *ConfigManager) SaveMinimizeToTray(enabled bool) error {
+	cfg, err := m.LoadConfig()
+	if err != nil {
+		// 配置损坏时中止，不能用空配置覆盖掉 Sites / AISetting 等其他字段。
+		return err
+	}
+	cfg.MinimizeToTray = enabled
+	return m.SaveConfig(cfg)
 }
 
 // GetPlatformMeta 获取指定平台的连接元信息

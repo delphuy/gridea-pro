@@ -13,6 +13,9 @@ var Version = "0.0.0-dev"
 //go:embed all:frontend/dist
 var assets embed.FS
 
+//go:embed build/windows/icon.ico
+var iconICO []byte
+
 func main() {
-	boot.Run(assets, Version)
+	boot.Run(assets, Version, iconICO)
 }

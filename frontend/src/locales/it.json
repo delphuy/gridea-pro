@@ -475,6 +475,13 @@
       "saveSuccess": "Impostazioni di notifica salvate",
       "saveFailed": "Salvataggio delle impostazioni di notifica non riuscito"
     },
+    "window": {
+      "title": "Finestra",
+      "minimizeToTray": "Riduci nell'area di sistema alla chiusura",
+      "minimizeToTrayDesc": "Se attivato, il pulsante di chiusura riduce l'app nell'area di sistema invece di uscire. Fai clic sull'icona per ripristinare la finestra, oppure esci dal menu del clic destro.",
+      "saveSuccess": "Impostazione finestra salvata",
+      "saveFailed": "Salvataggio dell'impostazione finestra non riuscito"
+    },
     "network": {
       "multiPlatformHint": "Puoi attivare più piattaforme contemporaneamente. Il deployment pubblicherà su tutte le piattaforme attive.",
       "enabled": "Attivo",

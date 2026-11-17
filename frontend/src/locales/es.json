@@ -475,6 +475,13 @@
       "saveSuccess": "Configuración de notificaciones guardada",
       "saveFailed": "No se pudo guardar la configuración de notificaciones"
     },
+    "window": {
+      "title": "Ventana",
+      "minimizeToTray": "Minimizar a la bandeja del sistema al cerrar",
+      "minimizeToTrayDesc": "Si está activado, el botón de cerrar minimiza la aplicación en la bandeja del sistema en lugar de salir. Haz clic en el icono de la bandeja para restaurar la ventana, o sal desde el menú del clic derecho.",
+      "saveSuccess": "Ajuste de ventana guardado",
+      "saveFailed": "No se pudo guardar el ajuste de ventana"
+    },
     "network": {
       "multiPlatformHint": "Puedes activar varias plataformas a la vez. El despliegue se publicará en todas las plataformas activadas.",
       "enabled": "Activado",

@@ -475,6 +475,13 @@
       "saveSuccess": "Benachrichtigungseinstellungen gespeichert",
       "saveFailed": "Speichern der Benachrichtigungseinstellungen fehlgeschlagen"
     },
+    "window": {
+      "title": "Fenster",
+      "minimizeToTray": "Beim Schließen in den System-Tray minimieren",
+      "minimizeToTrayDesc": "Wenn aktiviert, minimiert der Schließen-Button die App in den System-Tray, statt sie zu beenden. Klicken Sie auf das Tray-Symbol, um das Fenster wiederherzustellen, oder beenden Sie über das Rechtsklick-Menü.",
+      "saveSuccess": "Fenstereinstellung gespeichert",
+      "saveFailed": "Fenstereinstellung konnte nicht gespeichert werden"
+    },
     "network": {
       "multiPlatformHint": "Sie können mehrere Plattformen gleichzeitig aktivieren. Beim Deployment wird auf allen aktivierten Plattformen veröffentlicht.",
       "enabled": "Ein",

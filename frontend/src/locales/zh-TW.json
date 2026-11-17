@@ -528,6 +528,13 @@
       "saveSuccess": "通知設定已儲存",
       "saveFailed": "通知設定儲存失敗"
     },
+    "window": {
+      "title": "視窗",
+      "minimizeToTray": "關閉時最小化到系統托盤",
+      "minimizeToTrayDesc": "開啟後，點擊視窗關閉按鈕不會結束應用程式，而是最小化到系統托盤；左鍵點擊托盤圖示可還原視窗，右鍵選單可選擇結束。",
+      "saveSuccess": "視窗設定已儲存",
+      "saveFailed": "視窗設定儲存失敗"
+    },
     "network": {
       "multiPlatformHint": "可同時啟用多個平台，部署時會發布到所有已啟用的平台。",
       "enabled": "已啟用",
