@@ -168,6 +168,9 @@
   },
   "link": {
     "new": "新規リンク",
+    "emptyTitle": "リンクはまだありません",
+    "emptyHint": "友達のブログをここに追加しましょう",
+    "emptyAdd": "リンクを追加",
     "name": "サイト名",
     "url": "サイト URL",
     "description": "サイトの説明",

@@ -168,6 +168,9 @@
   },
   "link": {
     "new": "新增友鏈",
+    "emptyTitle": "還沒有友鏈",
+    "emptyHint": "把朋友們的部落格掛在這裡，方便互訪",
+    "emptyAdd": "新增友鏈",
     "name": "網站名稱",
     "url": "網站網址",
     "description": "網站描述",

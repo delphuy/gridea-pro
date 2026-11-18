@@ -168,6 +168,9 @@
   },
   "link": {
     "new": "Nouveau lien",
+    "emptyTitle": "Aucun lien pour le moment",
+    "emptyHint": "Ajoutez ici les blogs de vos amis",
+    "emptyAdd": "Ajouter un lien",
     "name": "Nom du site",
     "url": "URL du site",
     "description": "Description du site",
