@@ -283,7 +283,7 @@ func TestApplyUpdate_AfterFailedRedownload_ReturnsNotReady(t *testing.T) {
 
 func newWhitelistFacade() *UpdateFacade {
 	return &UpdateFacade{
-		releasesURL: "https://api.github.com/repos/Gridea-Pro/gridea-pro/releases/latest",
+		releasesURL: "https://api.github.com/repos/delphuy/gridea-pro/releases/latest",
 		httpClient:  &http.Client{Timeout: 2 * time.Second},
 	}
 }
@@ -297,9 +297,9 @@ func TestIsTrustedDownloadURL(t *testing.T) {
 		{"valid_github_release", trustedDownloadPrefix + "v1.0.0/app.zip", true},
 		{"different_repo", "https://github.com/other/project/releases/download/v1.0/app.zip", false},
 		{"non_github", "https://evil.example.com/releases/download/v1.0/app.zip", false},
-		{"http_scheme", "http://github.com/Gridea-Pro/gridea-pro/releases/download/v1/a.zip", false},
-		{"prefix_only_no_path", "https://github.com/Gridea-Pro/gridea-pro/releases/download/", true},
-		{"look_alike_domain", "https://github.com.evil.com/Gridea-Pro/gridea-pro/releases/download/", false},
+		{"http_scheme", "http://github.com/delphuy/gridea-pro/releases/download/v1/a.zip", false},
+		{"prefix_only_no_path", "https://github.com/delphuy/gridea-pro/releases/download/", true},
+		{"look_alike_domain", "https://github.com.evil.com/delphuy/gridea-pro/releases/download/", false},
 		{"empty", "", false},
 	}
 	for _, tt := range tests {
@@ -326,7 +326,7 @@ func TestDoDownload_RejectsUntrustedURL(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 
-	// srv.URL 不属于 github.com/Gridea-Pro/gridea-pro/releases/download/ 前缀
+	// srv.URL 不属于 github.com/delphuy/gridea-pro/releases/download/ 前缀
 	f.doDownload(ctx, srv.URL+"/some-asset.zip", "some-asset.zip", 1024, nil)
 
 	if n := hits.Load(); n != 0 {

@@ -40,16 +40,19 @@ type UpdateFacade struct {
 // NewUpdateFacade 创建 UpdateFacade
 func NewUpdateFacade() *UpdateFacade {
 	return &UpdateFacade{
-		releasesURL: "https://api.github.com/repos/Gridea-Pro/gridea-pro/releases/latest",
+		releasesURL: "https://api.github.com/repos/delphuy/gridea-pro/releases/latest",
 		httpClient:  &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
 // trustedDownloadPrefix 自更新下载 URL 必须的前缀：本仓库 releases 资源。
 // 即便 Release 的 browser_download_url 字段被篡改指向第三方域，也会被这里拦掉。
-// 运行期 / 构建期都不要修改；只有单元测试会临时覆盖它以驱动 httptest 服务器
+// 频道说明：更新源已从 Gridea-Pro 官方仓库迁至 delphuy/gridea-pro 自建发布线——
+// 官方 exe 不含本频道的私有功能，走官方更新会覆盖丢失；官方出新版后由本频道
+// 合并官方代码、重新构建发布，客户端照常自动更新。
+// 运行期不要修改；只有单元测试会临时覆盖它以驱动 httptest 服务器
 // （用 var 而非 const 是为了便于这种覆盖，生产代码从不写它）。
-var trustedDownloadPrefix = "https://github.com/Gridea-Pro/gridea-pro/releases/download/"
+var trustedDownloadPrefix = "https://github.com/delphuy/gridea-pro/releases/download/"
 
 // isTrustedDownloadURL 校验 URL 前缀是否在白名单内。
 func isTrustedDownloadURL(url string) bool {
@@ -759,44 +762,108 @@ func sanitizeName(name string) string {
 	return repl.Replace(name)
 }
 
-// compareSemver 比较两个语义化版本号，a > b 返回 1，a < b 返回 -1，相等返回 0。
+// compareSemver 按语义化版本规范（https://semver.org）比较版本号，
+// a > b 返回 1，a < b 返回 -1，相等返回 0。
+//
+// 与旧的「截断预发布段、只比主三元组」实现相比，本实现遵循标准规则：
+//   - 主三元组相同时，无预发布段的版本更高（1.3.0 > 1.3.0-beta.2），
+//     官方正式版合并进频道后能被正确识别为升级；
+//   - 预发布标识逐段比较：双方纯数字按数值，数字标识低于字符串标识，
+//     字符串标识按字典序；段数多者更高；
+//   - "+" 后的 build metadata 不参与比较；
+//   - 无法解析为 semver 的版本一律视为相等（返回 0），宁可不提示更新也不误降级。
+//
+// 频道版本号约定：官方版本号后以点分隔追加 huigg 标识，
+// 例如官方 1.3.0-beta.2 对应频道版 1.3.0-beta.2.huigg.5；
+// 官方将来出 beta.3（1.3.0-beta.3.huigg.1）或正式版（1.3.0-huigg.1）
+// 都天然大于已安装的频道版，能正确触发更新。
 func compareSemver(a, b string) int {
-	as := splitVersion(a)
-	bs := splitVersion(b)
-	n := max(len(as), len(bs))
-	for i := range n {
-		av := 0
-		bv := 0
-		if i < len(as) {
-			av = as[i]
-		}
-		if i < len(bs) {
-			bv = bs[i]
-		}
-		if av > bv {
-			return 1
-		}
-		if av < bv {
-			return -1
+	av, ok := parseSemver(a)
+	if !ok {
+		return 0
+	}
+	bv, ok := parseSemver(b)
+	if !ok {
+		return 0
+	}
+	for i := range av.nums {
+		if c := cmpInt(av.nums[i], bv.nums[i]); c != 0 {
+			return c
 		}
 	}
-	return 0
+	switch {
+	case len(av.pre) == 0 && len(bv.pre) == 0:
+		return 0
+	case len(av.pre) == 0:
+		return 1
+	case len(bv.pre) == 0:
+		return -1
+	}
+	for i := 0; i < len(av.pre) && i < len(bv.pre); i++ {
+		if c := comparePreIdent(av.pre[i], bv.pre[i]); c != 0 {
+			return c
+		}
+	}
+	return cmpInt(len(av.pre), len(bv.pre))
 }
 
-func splitVersion(v string) []int {
+// semverParts 是 parseSemver 的解析结果：主三元组 + 预发布标识段。
+type semverParts struct {
+	nums [3]int
+	pre  []string
+}
+
+// parseSemver 解析 "vX.Y.Z[-pre.id[.id…]][+build]" 形式的版本号。
+// 主三元组必须全为非负整数，否则解析失败。
+func parseSemver(v string) (semverParts, bool) {
+	var out semverParts
 	v = strings.TrimPrefix(strings.TrimSpace(v), "v")
-	if i := strings.IndexAny(v, "-+"); i >= 0 {
-		v = v[:i]
+	if i := strings.IndexByte(v, '+'); i >= 0 {
+		v = v[:i] // build metadata 不参与比较
 	}
-	parts := strings.Split(v, ".")
-	out := make([]int, 0, len(parts))
-	for _, p := range parts {
-		n, err := strconv.Atoi(strings.TrimSpace(p))
-		if err != nil {
-			out = append(out, 0)
-			continue
+	var pre string
+	if i := strings.IndexByte(v, '-'); i >= 0 {
+		pre, v = v[i+1:], v[:i]
+	}
+	nums := strings.Split(v, ".")
+	if len(nums) != 3 {
+		return out, false
+	}
+	for i, s := range nums {
+		n, err := strconv.Atoi(s)
+		if err != nil || n < 0 {
+			return out, false
 		}
-		out = append(out, n)
+		out.nums[i] = n
 	}
-	return out
+	if pre != "" {
+		out.pre = strings.Split(pre, ".")
+	}
+	return out, true
+}
+
+// comparePreIdent 比较单个预发布标识段：
+// 双方都是纯数字时按数值；数字标识低于字符串标识；字符串按字典序。
+func comparePreIdent(x, y string) int {
+	xn, xerr := strconv.Atoi(x)
+	yn, yerr := strconv.Atoi(y)
+	switch {
+	case xerr == nil && yerr == nil:
+		return cmpInt(xn, yn)
+	case xerr == nil:
+		return -1
+	case yerr == nil:
+		return 1
+	}
+	return strings.Compare(x, y)
+}
+
+func cmpInt(a, b int) int {
+	switch {
+	case a > b:
+		return 1
+	case a < b:
+		return -1
+	}
+	return 0
 }
