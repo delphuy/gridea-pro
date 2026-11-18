@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -57,14 +59,56 @@ func (s *ImageHostingService) List(page int) (*domain.ImageHostingListResponse, 
 	if err != nil {
 		return nil, err
 	}
+	var (
+		resp    *domain.ImageHostingListResponse
+		listErr error
+	)
 	switch providerName(setting) {
 	case domain.ImageHostingProviderGitee:
-		return s.giteeList(setting, page)
+		resp, listErr = s.giteeList(setting, page)
 	case domain.ImageHostingProviderOSS:
-		return s.ossList(setting, page)
+		resp, listErr = s.ossList(setting, page)
 	default:
-		return s.seeList(setting, page)
+		resp, listErr = s.seeList(setting, page)
 	}
+	if listErr != nil {
+		return nil, listErr
+	}
+	// 统一按上传时间从新到旧排序：刚传的图排在第一屏，一眼可见。
+	sortImageHostingFilesNewestFirst(resp.Data)
+	return resp, nil
+}
+
+// sortImageHostingFilesNewestFirst 就地按上传时间倒序排列（稳定排序）。
+// 个别服务商（gitee）列表拿不到上传时间：先从对象名前缀的毫秒时间戳回填；
+// 仍拿不到（CreatedAt=0）的条目沉底并保持原相对顺序。
+func sortImageHostingFilesNewestFirst(files []domain.ImageHostingFile) {
+	for i := range files {
+		if files[i].CreatedAt == 0 {
+			files[i].CreatedAt = int(createdMilliFromName(files[i].Path) / 1000)
+		}
+	}
+	sort.SliceStable(files, func(a, b int) bool {
+		return files[a].CreatedAt > files[b].CreatedAt
+	})
+}
+
+// createdMilliFromName 从「<毫秒时间戳>_<文件名>」对象名（generateStoredName 的命名约定）
+// 解析上传时间；解析失败或明显不合理（早于 2000-01-01 / 不早于 2100-01-01）返回 0。
+func createdMilliFromName(key string) int64 {
+	base := filepath.Base(key)
+	i := strings.IndexByte(base, '_')
+	if i <= 0 {
+		return 0
+	}
+	ms, err := strconv.ParseInt(base[:i], 10, 64)
+	if err != nil {
+		return 0
+	}
+	if sec := ms / 1000; sec < 946684800 || sec >= 4102444800 {
+		return 0
+	}
+	return ms
 }
 
 func (s *ImageHostingService) Delete(hash string) error {
@@ -92,6 +136,30 @@ func (s *ImageHostingService) UploadFromFrontend(files []domain.UploadedFile) ([
 		urls = append(urls, result.URL)
 	}
 	return urls, nil
+}
+
+// UploadImageBytes 把图片字节直传图床（粘贴/拖拽等前端拿不到磁盘路径的场景）：
+// 写入临时目录（保留原始文件名，供生成「<时间戳>_<文件名>」对象名），
+// 走统一 Upload 通道上传，随后清理临时文件，返回外链 URL。
+func (s *ImageHostingService) UploadImageBytes(name string, data []byte) (string, error) {
+	base := filepath.Base(strings.TrimSpace(strings.ReplaceAll(name, `\`, "/")))
+	if base == "" || base == "." || base == "/" || base == `\` {
+		base = "image.png"
+	}
+	tmpDir, err := os.MkdirTemp("", "gridea-img-*")
+	if err != nil {
+		return "", fmt.Errorf("创建临时目录失败: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+	tmpPath := filepath.Join(tmpDir, base)
+	if err := os.WriteFile(tmpPath, data, 0o600); err != nil {
+		return "", fmt.Errorf("写入临时图片文件失败: %w", err)
+	}
+	file, err := s.Upload(tmpPath)
+	if err != nil {
+		return "", err
+	}
+	return file.URL, nil
 }
 
 // testPNG1x1 是一张 1x1 透明 PNG，用于连通性测试。
@@ -144,7 +212,6 @@ func joinPathPrefix(prefix, name string) string {
 	}
 	return p + "/" + name
 }
-
 
 // TestUpload 上传一张 1x1 测试图并立即删除，验证图床配置可用。
 // 返回上传成功后的 URL（即使删除失败也返回，便于人工排查）。

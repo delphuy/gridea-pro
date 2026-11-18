@@ -164,8 +164,9 @@ func (s *ImageHostingService) ossUpload(setting *domain.ImageHostingSetting, fil
 
 // ossListBucketResult / ossContent 是 GET bucket（列举对象）返回的 XML 结构。
 type ossListBucketResult struct {
-	XMLName  xml.Name     `xml:"ListBucketResult"`
-	Contents []ossContent `xml:"Contents"`
+	XMLName     xml.Name     `xml:"ListBucketResult"`
+	Contents    []ossContent `xml:"Contents"`
+	IsTruncated bool         `xml:"IsTruncated"`
 }
 
 type ossContent struct {
@@ -179,59 +180,72 @@ func (s *ImageHostingService) ossList(setting *domain.ImageHostingSetting, page 
 	if err != nil {
 		return nil, err
 	}
-	// OSS 列举不做翻页：第 1 页返回最多 1000 个，之后返回空（前端据此收起翻页按钮）。
+	// OSS 单页最多 1000 个：用 marker 循环取全量（上限 100 页 = 10 万个，防异常桶拖死客户端），
+	// 排序交给 ImageHostingService.List 统一做。page>1 返回空（前端据此收起翻页按钮）。
 	result := &domain.ImageHostingListResponse{Code: 200, Success: true, Data: []domain.ImageHostingFile{}}
 	if page > 1 {
 		return result, nil
 	}
 
-	listURL := ossBaseURL(cfg) + "/?max-keys=1000"
-	if prefix := strings.Trim(cfg.PathPrefix, "/"); prefix != "" {
-		listURL += "&prefix=" + url.QueryEscape(prefix+"/")
-	}
-	date := time.Now().UTC().Format(http.TimeFormat)
-
-	req, err := http.NewRequest("GET", listURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Date", date)
-	req.Header.Set("Authorization", ossSign("GET", cfg, "", date, "", "/"+cfg.Bucket+"/"))
-
-	resp, err := ossDo(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
-	if err != nil {
-		return nil, err
-	}
-	var parsed ossListBucketResult
-	if err := xml.Unmarshal(body, &parsed); err != nil {
-		return nil, fmt.Errorf("解析 OSS 列表响应失败: %w", err)
-	}
-
-	for _, c := range parsed.Contents {
-		name := filepath.Base(c.Key)
-		lower := strings.ToLower(name)
-		dot := strings.LastIndex(lower, ".")
-		if dot < 0 || !imageHostingExts[lower[dot:]] {
-			continue
+	prefix := strings.Trim(cfg.PathPrefix, "/")
+	var marker string
+	for i := 0; i < 100; i++ {
+		listURL := ossBaseURL(cfg) + "/?max-keys=1000"
+		if prefix != "" {
+			listURL += "&prefix=" + url.QueryEscape(prefix+"/")
 		}
-		var createdAt int64
-		if t, err := time.Parse(time.RFC3339, c.LastModified); err == nil {
-			createdAt = t.Unix()
+		if marker != "" {
+			listURL += "&marker=" + url.QueryEscape(marker)
 		}
-		result.Data = append(result.Data, domain.ImageHostingFile{
-			Filename:  name,
-			URL:       ossURL(cfg, c.Key),
-			Hash:      c.Key,
-			Path:      c.Key,
-			Size:      int(c.Size),
-			CreatedAt: int(createdAt),
-		})
+		date := time.Now().UTC().Format(http.TimeFormat)
+
+		req, err := http.NewRequest("GET", listURL, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Date", date)
+		req.Header.Set("Authorization", ossSign("GET", cfg, "", date, "", "/"+cfg.Bucket+"/"))
+
+		resp, err := ossDo(req)
+		if err != nil {
+			return nil, err
+		}
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+		resp.Body.Close()
+		if readErr != nil {
+			return nil, readErr
+		}
+		var parsed ossListBucketResult
+		if err := xml.Unmarshal(body, &parsed); err != nil {
+			return nil, fmt.Errorf("解析 OSS 列表响应失败: %w", err)
+		}
+
+		for _, c := range parsed.Contents {
+			name := filepath.Base(c.Key)
+			lower := strings.ToLower(name)
+			dot := strings.LastIndex(lower, ".")
+			if dot < 0 || !imageHostingExts[lower[dot:]] {
+				continue
+			}
+			var createdAt int64
+			if t, err := time.Parse(time.RFC3339, c.LastModified); err == nil {
+				createdAt = t.Unix()
+			}
+			result.Data = append(result.Data, domain.ImageHostingFile{
+				Filename:  name,
+				URL:       ossURL(cfg, c.Key),
+				Hash:      c.Key,
+				Path:      c.Key,
+				Size:      int(c.Size),
+				CreatedAt: int(createdAt),
+			})
+		}
+
+		if !parsed.IsTruncated || len(parsed.Contents) == 0 {
+			break
+		}
+		// 翻页句柄用本页最后一个原始 key（跳过非图片条目也照样推进，保证不漏不重）。
+		marker = parsed.Contents[len(parsed.Contents)-1].Key
 	}
 	return result, nil
 }

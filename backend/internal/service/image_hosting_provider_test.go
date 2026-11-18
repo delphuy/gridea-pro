@@ -176,3 +176,59 @@ func TestTestPNG1x1IsValid(t *testing.T) {
 		t.Fatalf("测试图不是 PNG: %x", data[:8])
 	}
 }
+
+// ── 列表排序：刚传的图排最前 ──────────────────────────────────────────
+
+func TestSortImageHostingFilesNewestFirst(t *testing.T) {
+	files := []domain.ImageHostingFile{
+		{Filename: "1000_old.png", Path: "blog/1000_old.png", CreatedAt: 1000},
+		{Filename: "1731920000000_newer.png", Path: "blog/1731920000000_newer.png"}, // 无时间：从名字前缀回填
+		{Filename: "b_no_time.png", Path: "blog/b_no_time.png"},                     // 无时间无名前缀：沉底
+		{Filename: "500_older.png", Path: "blog/500_older.png", CreatedAt: 500},
+		{Filename: "a_no_time.png", Path: "blog/a_no_time.png"}, // 沉底项应保持原相对顺序（b 在 a 前 = 稳定）
+		{Filename: "1731910000000_mid.png", Path: "blog/1731910000000_mid.png"},
+	}
+	sortImageHostingFilesNewestFirst(files)
+
+	want := []string{
+		"1731920000000_newer.png", // 名字回填 1731920000 秒，最新
+		"1731910000000_mid.png",   // 名字回填 1731910000 秒
+		"1000_old.png",            // 服务商给的 1000 秒
+		"500_older.png",           // 服务商给的 500 秒
+		"b_no_time.png",           // 拿不到时间：沉底但保持原顺序
+		"a_no_time.png",
+	}
+	for i, w := range want {
+		if files[i].Filename != w {
+			var got []string
+			for _, f := range files {
+				got = append(got, f.Filename)
+			}
+			t.Fatalf("排序后第 %d 位应为 %q，实际 %q（整体: %v）", i, w, files[i].Filename, got)
+		}
+	}
+	// 回填的时间应该真正写回条目（gitee 场景下前端也能按时间展示）
+	if files[0].CreatedAt != 1731920000 {
+		t.Fatalf("名字前缀时间戳未回填到 CreatedAt: %d", files[0].CreatedAt)
+	}
+}
+
+func TestCreatedMilliFromName(t *testing.T) {
+	cases := []struct {
+		key  string
+		want int64
+	}{
+		{"1731920000000_a.png", 1731920000000},
+		{"blog/1731920000000_a.png", 1731920000000}, // 带目录前缀也取文件名
+		{"123_too_early.png", 0},                    // 早于 2000 年，视为非法
+		{"99999999999999_far_future.png", 0},        // 晚于 2100 年，视为非法
+		{"abc_no_digit.png", 0},
+		{"_leading.png", 0},
+		{"", 0},
+	}
+	for _, c := range cases {
+		if got := createdMilliFromName(c.key); got != c.want {
+			t.Fatalf("createdMilliFromName(%q) = %d, want %d", c.key, got, c.want)
+		}
+	}
+}
