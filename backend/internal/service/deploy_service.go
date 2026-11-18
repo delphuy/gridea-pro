@@ -158,8 +158,15 @@ func (s *DeployService) DeployToRemote(ctx context.Context) (err error) {
 			return fmt.Errorf("CDN 配置加载失败: %w", err)
 		}
 		if reason := cdnFailureAbortReason(result); reason != "" {
-			s.log(ctx, fmt.Sprintf("❌ %s，已中止部署以避免上线图片 404", reason))
-			return fmt.Errorf("CDN 上传失败率过高：%s", reason)
+			// 中止消息带上首个失败的具体原因：部署日志只发前端事件不落盘，
+			// 用户看到的错误必须自带可诊断信息（2026-11-18 huigg 同步事故的教训）。
+			detail := ""
+			if len(result.Failures) > 0 {
+				f := result.Failures[0]
+				detail = fmt.Sprintf("（首个失败 %s：%s）", f.Path, truncateRunes(f.Error, 120))
+			}
+			s.log(ctx, fmt.Sprintf("❌ %s，已中止部署以避免上线图片 404%s", reason, detail))
+			return fmt.Errorf("CDN 上传失败率过高：%s%s", reason, detail)
 		}
 	}
 

@@ -513,6 +513,28 @@ func (s *CdnUploadService) UploadMediaForDeploy(ctx context.Context, appDir stri
 		}
 	}
 
+	// ── 同仓库冗余跳过（2026-11-18 huigg 同步事故）──
+	// CDN 目标与 github 部署目标同仓库且 output 已有同路径副本时，git push 会
+	// 原样交付这些文件，Contents API 单独上传是重复劳动：不仅白耗 API 配额，
+	// 5 路并发还会在限流 / 网络抖动时把同一条 HTTP/2 连接上的小文件连坐失败，
+	// 最终拖死整个部署。详见 buildPushRedundancySkip 的条件注释。
+	if skip := s.buildPushRedundancySkip(setting, appDir); skip != nil {
+		var kept []struct {
+			localPath  string
+			remotePath string
+		}
+		for _, f := range filesToUpload {
+			if skip(f.remotePath) {
+				continue
+			}
+			kept = append(kept, f)
+		}
+		if skipped := len(filesToUpload) - len(kept); skipped > 0 {
+			logger(fmt.Sprintf("%d 个文件与部署仓库同源（output 已有副本，git push 将直接交付），跳过 CDN 单独上传", skipped))
+		}
+		filesToUpload = kept
+	}
+
 	res.Total = len(filesToUpload)
 	if res.Total == 0 {
 		if len(allFiles) > 0 {
@@ -613,6 +635,72 @@ func (s *CdnUploadService) UploadMediaForDeploy(ctx context.Context, appDir stri
 		}
 	}
 	return res, nil
+}
+
+// buildPushRedundancySkip 返回"将由本次 git push 直接交付、无需 CDN 单独上传"的
+// 判定函数；条件不满足时返回 nil（保持原有 CDN 上传行为）。
+//
+// 背景（2026-11-18 huigg 同步事故）：用户把 CDN 直接指向自己的 GitHub Pages
+// 部署仓库（user/repo/branch 与 github 平台部署配置完全一致）时，渲染器早已
+// 把媒体文件复制进 output/，部署的 git push 会把同一份文件原样送进仓库，
+// jsDelivr 立即可读。此时 Contents API 单独上传是纯粹的重复劳动：白耗配额，
+// 还会在限流 / 网络抖动时把整个部署拖死。
+//
+// 命中条件（缺一不可，宁可不跳过也不误跳过）：
+//  1. settingRepo 可用，且启用的部署平台里包含 github
+//  2. CDN 目标 (user/repo@branch) 与 github 部署配置完全一致
+//     （分支双方缺省都按 main；用户名 / 仓库名大小写不敏感）
+//  3. output/<relPath> 存在——push 一定会带上它；副本缺失的文件仍走上传
+func (s *CdnUploadService) buildPushRedundancySkip(cdn domain.CdnSetting, appDir string) func(string) bool {
+	if s.settingRepo == nil {
+		return nil
+	}
+	// 读部署配置用独立 context：部署 ctx 在超时边缘被取消时不影响判定，
+	// 与 notifyDeployResult 的处理方式一致。
+	deploySetting, err := s.settingRepo.GetSetting(context.Background())
+	if err != nil {
+		return nil
+	}
+
+	platforms := deploySetting.EnabledPlatforms
+	if len(platforms) == 0 {
+		platforms = []string{deploySetting.Platform}
+	}
+	hasGithub := false
+	for _, p := range platforms {
+		if p == "github" {
+			hasGithub = true
+			break
+		}
+	}
+	if !hasGithub {
+		return nil
+	}
+
+	user := strings.TrimSpace(deploySetting.GetFrom("github", "username"))
+	repo := strings.TrimSpace(deploySetting.GetFrom("github", "repository"))
+	branch := strings.TrimSpace(deploySetting.GetFrom("github", "branch"))
+	if user == "" || repo == "" {
+		return nil
+	}
+	if branch == "" {
+		branch = "main"
+	}
+	cdnBranch := cdn.GithubBranch
+	if cdnBranch == "" {
+		cdnBranch = "main"
+	}
+	if !strings.EqualFold(user, cdn.GithubUser) ||
+		!strings.EqualFold(repo, cdn.GithubRepo) ||
+		!strings.EqualFold(branch, cdnBranch) {
+		return nil
+	}
+
+	outputDir := filepath.Join(appDir, "output")
+	return func(remotePath string) bool {
+		_, err := os.Stat(filepath.Join(outputDir, filepath.FromSlash(remotePath)))
+		return err == nil
+	}
 }
 
 // deleteFromGitHub 从 GitHub CDN 仓库里删除一个已上传的文件。
