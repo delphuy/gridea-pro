@@ -22,9 +22,9 @@
             <div v-for="(item, index1) in currentThemeConfig" :key="index1">
               <div v-if="item && item.group === activeGroup" class="space-y-2">
                 <div class="flex justify-between items-center"
-                  :class="{ 'max-w-sm': item.type === 'switch' || item.type === 'toggle' }">
+                  :class="{ 'max-w-sm': ['switch', 'toggle', 'boolean'].includes(item.type) }">
                   <label class="text-sm font-medium text-foreground">{{ item.label }}</label>
-                  <div v-if="item.type === 'switch' || item.type === 'toggle'">
+                  <div v-if="['switch', 'toggle', 'boolean'].includes(item.type)">
                     <Switch v-model:checked="form[item.name]" size="sm" />
                   </div>
                 </div>
@@ -36,8 +36,9 @@
                   <Input v-model="form[item.name]" />
                 </div>
 
-                <!-- Color Input -->
-                <div v-if="item.type === 'input' && item.card === 'color'" class="relative max-w-sm">
+                <!-- Color Input：type=color（fluid 等主题写法）或 input+card=color -->
+                <div v-if="(item.type === 'input' && item.card === 'color') || item.type === 'color'"
+                  class="relative max-w-sm">
                   <Popover>
                     <PopoverTrigger as-child>
                       <button
@@ -112,6 +113,11 @@
                   <Textarea v-model="form[item.name]" rows="4" />
                 </div>
 
+                <!-- Number：模板里按字符串直接输出（无算术），存字符串即可 -->
+                <div v-if="item.type === 'number'" class="max-w-sm">
+                  <Input v-model="form[item.name]" type="number" />
+                </div>
+
                 <!-- Picture Upload -->
                 <div v-if="['picture-upload', 'picture', 'image'].includes(item.type)" class="space-y-3">
                   <Input v-model="form[item.name]" :placeholder="t('settings.theme.imageUrlPlaceholder')" class="max-w-sm" />
@@ -140,10 +146,10 @@
                   </div>
                 </div>
 
-                <!-- Markdown：复用编辑器的 CodeMirror 源码栏（此前是 Monaco，
+                <!-- Markdown / Code：复用编辑器的 CodeMirror 源码栏（此前是 Monaco，
                      为一个零主题使用的字段类型扛了 154 MB 依赖，已移除）。
                      SourceEditor 高度为 100%，需由外层给定高度。 -->
-                <div v-if="item.type === 'markdown'"
+                <div v-if="item.type === 'markdown' || item.type === 'code'"
                   class="border border-input rounded-lg overflow-hidden shadow-sm h-80">
                   <SourceEditor v-model:value="form[item.name]" />
                 </div>
