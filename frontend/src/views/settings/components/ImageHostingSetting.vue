@@ -460,10 +460,19 @@ const uploadImages = async () => {
   }
 }
 
-// 切换图床服务商后刷新图片浏览器
-watch(() => form.provider, () => {
-  if (form.enabled) {
-    loadImages(1)
+// 切换图床服务商后刷新图片浏览器。
+// 后端 List 每次都读「已保存配置」：只改表单不落盘，列出来的还是旧服务商的图。
+// 与上传 / 测试按钮同套路：先静默保存当前表单，再拉列表；刷新按钮随之自然正确。
+watch(() => form.provider, async () => {
+  if (!form.enabled) return
+  try {
+    const s = new domain.ImageHostingSetting(buildSettingPayload())
+    await SaveSetting(s)
+  } catch (e: any) {
+    console.error(e)
+    toast.error(errMsg(e, t('common.saveFailed')))
+    return
   }
+  loadImages(1)
 })
 </script>
