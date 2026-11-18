@@ -854,7 +854,7 @@
     "linkDialog": {
       "title": "Edit link",
       "url": "URL",
-      "urlPlaceholder": "https://example.com",
+      "urlPlaceholder": "baidu.com or https://… (https:// auto-added)",
       "text": "Display text",
       "textPlaceholder": "Optional",
       "remove": "Remove",

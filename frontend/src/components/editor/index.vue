@@ -309,6 +309,15 @@ function openLink() {
   linkOpen.value = true
 }
 function onLinkSave(payload: { url: string; text: string }) {
+  // 工具栏插入的超链接默认补全协议头（2026-11-18 拍板）：
+  // 不是 https:// / http:// 开头就一律自动补 https://，不挑链接形态，
+  // 落进编辑器、存进 markdown 的直接就是完整链接。
+  if (payload.url) {
+    payload.url = payload.url.trim()
+    if (!/^https?:\/\//i.test(payload.url)) {
+      payload.url = `https://${payload.url}`
+    }
+  }
   if (inSource.value) {
     const { url, text } = payload
     sourceApi.value?.cmd.replaceSelection(`[${text || url}](${url})`)

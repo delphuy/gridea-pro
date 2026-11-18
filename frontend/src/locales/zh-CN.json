@@ -851,7 +851,7 @@
     "linkDialog": {
       "title": "编辑链接",
       "url": "链接地址",
-      "urlPlaceholder": "https://example.com",
+      "urlPlaceholder": "baidu.com 或 https://…（缺 https:// 自动补全）",
       "text": "显示文本",
       "textPlaceholder": "可选",
       "remove": "移除",
