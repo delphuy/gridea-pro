@@ -6,6 +6,9 @@ export const toast = {
   error: (message: string, duration = 2000) => sonner.error(message, { duration }),
   warning: (message: string, duration = 2000) => sonner.warning(message, { duration }),
   info: (message: string, duration = 2000) => sonner.info(message, { duration }),
+  // loading toast 会一直停留，直到用返回的 id 调 dismiss（用于 AI 生成等长耗时操作）
+  loading: (message: string) => sonner.loading(message),
+  dismiss: (id?: string | number) => sonner.dismiss(id),
 }
 
 export const setupToastListeners = () => {

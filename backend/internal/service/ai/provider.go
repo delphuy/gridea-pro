@@ -84,7 +84,8 @@ func filterChatModels(models []string) []string {
 	return out
 }
 
-// defaultHTTPClient 默认 HTTP 客户端（30s 超时）
+// defaultHTTPClient 默认 HTTP 客户端（120s 超时，与 AIService 的 AI 请求超时一致；
+// 推理型模型的非流式生成经常超过 30s）
 func defaultHTTPClient() *http.Client {
-	return &http.Client{Timeout: 30 * time.Second}
+	return &http.Client{Timeout: 120 * time.Second}
 }

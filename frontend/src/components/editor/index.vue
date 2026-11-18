@@ -152,7 +152,9 @@ const editor = useEditor({
       aiComplete: async (prefix: string, suffix: string) => {
         try {
           return await Complete(prefix, suffix)
-        } catch {
+        } catch (err: unknown) {
+          // 续写失败不能静默吞掉（推理模型 token 预算不足等真实病因要让用户看到）
+          handleAIError(err)
           return ''
         }
       },
@@ -452,12 +454,8 @@ async function generateSummary() {
   try {
     summaryText.value = await Summary(model.value ?? '')
   } catch (err: unknown) {
-    console.error('[editor] summary failed:', err)
-    const msg = String((err as { message?: string })?.message || err || '')
-    if (msg.includes('[DAILY_LIMIT]')) toast.error(t('settings.ai.dailyLimitReached'))
-    else if (msg.includes('[RATE_LIMIT]')) toast.error(t('settings.ai.rateLimited'))
-    else if (msg.includes('[UPSTREAM_429]') || msg.includes('429')) toast.error(t('settings.ai.upstream429'))
-    else toast.error(t('editor.summaryDialog.failed'))
+    // 真实病因（超时/token 预算不足等）直出，不吞成笼统失败
+    handleAIError(err)
     summaryOpen.value = false
   } finally {
     summaryLoading.value = false
@@ -515,7 +513,11 @@ watch(
 )
 
 // ── AI 润色 ──────────────────────────────────────────
+const polishing = ref(false)
+
 async function polishSelection() {
+  // 润色进行中防重复触发（推理型模型一次可能要等十几秒）
+  if (polishing.value) return
   // 源码模式取 CodeMirror 选区，结果按 Markdown 原文回填
   if (inSource.value) {
     const s = sourceApi.value
@@ -525,11 +527,16 @@ async function polishSelection() {
       toast.warning('请先选中要润色的文本')
       return
     }
+    polishing.value = true
+    const loadingId = toast.loading(t('editor.aiPolishing'))
     try {
       const polished = await Polish(text)
       if (polished) s.cmd.replaceSelection(polished)
     } catch (err: unknown) {
-      handlePolishError(err)
+      handleAIError(err)
+    } finally {
+      toast.dismiss(loadingId)
+      polishing.value = false
     }
     return
   }
@@ -541,6 +548,8 @@ async function polishSelection() {
     return
   }
   const text = e.state.doc.textBetween(from, to, '\n')
+  polishing.value = true
+  const loadingId = toast.loading(t('editor.aiPolishing'))
   try {
     const polished = await Polish(text)
     if (polished) {
@@ -548,17 +557,22 @@ async function polishSelection() {
       e.chain().focus().insertContentAt({ from, to }, polished, { contentType: 'markdown' }).run()
     }
   } catch (err: unknown) {
-    handlePolishError(err)
+    handleAIError(err)
+  } finally {
+    toast.dismiss(loadingId)
+    polishing.value = false
   }
 }
 
-function handlePolishError(err: unknown) {
-  console.error('[editor] polish failed:', err)
+// handleAIError AI 请求失败的统一出口：配额/限流走专属文案，其余直出真实病因，
+// 不再吞成笼统的「润色失败」（推理模型 token 预算不足、超时等都要让用户看见）
+function handleAIError(err: unknown) {
+  console.error('[editor] ai request failed:', err)
   const msg = String((err as { message?: string })?.message || err || '')
   if (msg.includes('[DAILY_LIMIT]')) toast.error(t('settings.ai.dailyLimitReached'))
   else if (msg.includes('[RATE_LIMIT]')) toast.error(t('settings.ai.rateLimited'))
   else if (msg.includes('[UPSTREAM_429]') || msg.includes('429')) toast.error(t('settings.ai.upstream429'))
-  else toast.error('润色失败')
+  else toast.error(t('editor.aiFailedDetail', { msg: msg || '未知错误' }))
 }
 
 // ── 数学公式编辑弹层 ─────────────────────────────────

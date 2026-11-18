@@ -46,8 +46,14 @@ func NewCdnUploadService(cdnSettingRepo domain.CdnSettingRepository, settingRepo
 	}
 }
 
-// newHTTPClient 创建支持代理的 HTTP client，支持 HTTP/HTTPS/SOCKS 协议
+// newHTTPClient 创建支持代理的 HTTP client，支持 HTTP/HTTPS/SOCKS 协议（默认 60s 超时）
 func newHTTPClient(proxyURL string) *http.Client {
+	return newHTTPClientWithTimeout(proxyURL, 60*time.Second)
+}
+
+// newHTTPClientWithTimeout 同 newHTTPClient，但允许自定义总超时。
+// AI 生成类请求（尤其推理型模型的非流式调用）经常超过 60s，需要更长的等待窗口。
+func newHTTPClientWithTimeout(proxyURL string, timeout time.Duration) *http.Client {
 	transport := &http.Transport{
 		MaxIdleConns:        100,
 		MaxIdleConnsPerHost: 10,
@@ -68,7 +74,7 @@ func newHTTPClient(proxyURL string) *http.Client {
 		}
 	}
 	return &http.Client{
-		Timeout:   60 * time.Second,
+		Timeout:   timeout,
 		Transport: transport,
 	}
 }

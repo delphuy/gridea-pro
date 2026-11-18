@@ -795,6 +795,8 @@
     "image": "图片",
     "table": "表格",
     "aiPolish": "AI 润色",
+    "aiPolishing": "AI 润色中…",
+    "aiFailedDetail": "AI 调用失败：{msg}",
     "rich": "富文本",
     "source": "源码",
     "slash": {

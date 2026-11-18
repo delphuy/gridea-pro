@@ -798,6 +798,8 @@
     "image": "Image",
     "table": "Table",
     "aiPolish": "AI polish",
+    "aiPolishing": "Polishing with AI…",
+    "aiFailedDetail": "AI request failed: {msg}",
     "rich": "Rich text",
     "source": "Source",
     "slash": {

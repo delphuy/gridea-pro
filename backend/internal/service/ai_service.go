@@ -33,13 +33,15 @@ func NewAIService(repo domain.AISettingRepository, settingRepo domain.SettingRep
 
 // httpClient 根据当前代理配置返回合适的 HTTP client
 func (s *AIService) httpClient(ctx context.Context) *http.Client {
+	// AI 生成（尤其推理型模型的非流式调用）经常超过 30s，超时给足 120s
+	const aiHTTPTimeout = 120 * time.Second
 	if s.settingRepo != nil {
 		setting, err := s.settingRepo.GetSetting(ctx)
 		if err == nil && setting.ProxyEnabled && setting.ProxyURL != "" {
-			return newHTTPClient(setting.ProxyURL)
+			return newHTTPClientWithTimeout(setting.ProxyURL, aiHTTPTimeout)
 		}
 	}
-	return &http.Client{Timeout: 30 * time.Second}
+	return &http.Client{Timeout: aiHTTPTimeout}
 }
 
 var customBaseURLProviders = map[string]struct{}{
@@ -232,10 +234,11 @@ func (s *AIService) GenerateSlug(ctx context.Context, title string) (string, err
 	}
 
 	req := ai.ChatRequest{
-		Model:       model,
-		Prompt:      slugPrompt(title),
+		Model:  model,
+		Prompt: slugPrompt(title),
+		// 推理型模型的思考 token 与正文共享 max_tokens 预算，slug 本身很短但思考需要余量
 		Temperature: 0.1,
-		MaxTokens:   80,
+		MaxTokens:   400,
 	}
 	raw, err := provider.Chat(ctx, req, apiKey, s.httpClient(ctx))
 	if err != nil {
@@ -326,10 +329,11 @@ func (s *AIService) Complete(ctx context.Context, prefix, suffix string) (string
 	}
 
 	req := ai.ChatRequest{
-		Model:       model,
-		Prompt:      completePrompt(prefix, suffix),
+		Model:  model,
+		Prompt: completePrompt(prefix, suffix),
+		// 推理型模型的思考 token 与正文共享 max_tokens 预算，续写很短但思考需要余量
 		Temperature: 0.3,
-		MaxTokens:   160,
+		MaxTokens:   600,
 	}
 	raw, err := provider.Chat(ctx, req, apiKey, s.httpClient(ctx))
 	if err != nil {
@@ -358,10 +362,11 @@ func (s *AIService) Polish(ctx context.Context, text string) (string, error) {
 		}
 	}
 
-	// 输出 token 上限按输入长度放宽（粗略：rune 数 + 余量）
-	maxTokens := len([]rune(text)) + 200
-	if maxTokens > 2000 {
-		maxTokens = 2000
+	// 输出 token 上限按输入长度放宽：推理型模型的思考 token 与正文共享 max_tokens 预算，
+	// 且润色后文本常比原文更长，余量必须同时覆盖思考与正文（实测 227 字文本 +200 预算即被截断）。
+	maxTokens := len([]rune(text)) + 800
+	if maxTokens > 4000 {
+		maxTokens = 4000
 	}
 
 	req := ai.ChatRequest{
@@ -418,10 +423,11 @@ func (s *AIService) Summary(ctx context.Context, content string) (string, error)
 	}
 
 	req := ai.ChatRequest{
-		Model:       model,
-		Prompt:      summaryPrompt(content),
+		Model:  model,
+		Prompt: summaryPrompt(content),
+		// 推理型模型的思考 token 与正文共享 max_tokens 预算，摘要 ≤100 字但思考需要余量
 		Temperature: 0.5,
-		MaxTokens:   400,
+		MaxTokens:   1200,
 	}
 	raw, err := provider.Chat(ctx, req, apiKey, s.httpClient(ctx))
 	if err != nil {
