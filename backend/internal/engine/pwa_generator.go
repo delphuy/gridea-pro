@@ -229,6 +229,8 @@ self.addEventListener('fetch', function(event) {
 });
 
 function isStaticAsset(url) {
+  // /api/search.json 等接口数据每次构建都变，进 cache-first 会让搜索结果过期
+  if (url.indexOf('/api/') !== -1) return false;
   return /\.(css|js|png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot|json)(\?.*)?$/i.test(url);
 }
 `, cacheVersion)
