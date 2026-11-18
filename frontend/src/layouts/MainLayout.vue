@@ -420,6 +420,7 @@ import {
   CancelDownload,
   ApplyUpdate,
 } from '@/wailsjs/go/facade/UpdateFacade'
+import { LoadSite } from '@/wailsjs/go/app/App'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import WindowControls from '@/components/WindowControls/index.vue'
 import ErrorBoundary from '@/components/ErrorBoundary.vue'
@@ -935,6 +936,23 @@ onMounted(() => {
 
   // Initial site load request
   EventsEmit('app-ready')
+
+  // 修复（重启后文章列表为空）：app-ready 是发后即忘的事件，后端的
+  // EventsOn(EventAppReady) 要等 Startup() 全部跑完（含 DataMigrator 对
+  // 全部文章的扫描清洗，文章多时可达分钟级）才注册；前端 webview 先加载
+  // 完时事件会被静默丢弃，app-site-loaded 永远不回来，store 里 posts 为
+  // 空——表现为"预览/渲染正常，但文章、标签等列表全空"。这里主动拉一次
+  // 兜底：LoadSite 幂等（事件路径成功时后端走的是已扫好的缓存，秒回），
+  // 仓库未加载时会按需扫盘；若 Startup 仍在迁移，会在仓库锁上排队等完整
+  // 数据，不会取到半截。
+  void (async () => {
+    try {
+      const siteData = await LoadSite()
+      siteStore.updateSite(siteData)
+    } catch (err) {
+      console.error('[MainLayout] 启动兜底 LoadSite 失败:', err)
+    }
+  })()
 
   // 启动后尝试检查更新：有新版本且不是已跳过的版本时自动弹窗
   checkUpdate({ autoOpen: true })
