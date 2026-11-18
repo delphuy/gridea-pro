@@ -37,6 +37,7 @@ func (s *ImageHostingService) ossRequire(setting *domain.ImageHostingSetting) (*
 }
 
 // ossHost 返回请求主机名：自定义域名（可带或不带 https://）优先，默认 {bucket}.{endpoint}。
+// endpoint 允许只填区域名（如 oss-cn-shanghai）：归一化后不含 "." 时自动补全官方后缀 .aliyuncs.com。
 func ossHost(cfg *domain.ImageHostingOSSSetting) string {
 	if d := strings.TrimSpace(cfg.CustomDomain); d != "" {
 		d = strings.TrimPrefix(strings.TrimPrefix(d, "https://"), "http://")
@@ -44,7 +45,11 @@ func ossHost(cfg *domain.ImageHostingOSSSetting) string {
 	}
 	endpoint := strings.TrimSpace(cfg.Endpoint)
 	endpoint = strings.TrimPrefix(strings.TrimPrefix(endpoint, "https://"), "http://")
-	return cfg.Bucket + "." + strings.TrimRight(endpoint, "/")
+	endpoint = strings.TrimRight(endpoint, "/")
+	if !strings.Contains(endpoint, ".") {
+		endpoint += ".aliyuncs.com"
+	}
+	return cfg.Bucket + "." + endpoint
 }
 
 // ossBaseURL 拼出对象/列表请求的基础地址（固定走 https）。

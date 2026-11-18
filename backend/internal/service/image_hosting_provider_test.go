@@ -120,6 +120,11 @@ func TestOSSHost(t *testing.T) {
 	if got, want := ossHost(cfg), "img.huigg.xyz"; got != want {
 		t.Fatalf("自定义域名未归一化: %q", got)
 	}
+	cfg.CustomDomain = ""
+	cfg.Endpoint = "oss-cn-shanghai"
+	if got, want := ossHost(cfg), "huigg-img.oss-cn-shanghai.aliyuncs.com"; got != want {
+		t.Fatalf("纯区域名 endpoint 未自动补全 .aliyuncs.com: %q", got)
+	}
 }
 
 // ossSign 的关键风险是 StringToSign 布局（连续换行、x-oss 头、资源名）。
