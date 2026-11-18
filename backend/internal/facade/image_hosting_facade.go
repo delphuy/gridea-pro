@@ -1,6 +1,8 @@
 package facade
 
 import (
+	"encoding/base64"
+	"fmt"
 	"sync/atomic"
 
 	"gridea-pro/backend/internal/domain"
@@ -44,6 +46,15 @@ func (f *ImageHostingFacade) DeleteImage(hash string) error {
 
 func (f *ImageHostingFacade) UploadImagesFromFrontend(files []domain.UploadedFile) ([]string, error) {
 	return f.svc().UploadFromFrontend(files)
+}
+
+// UploadImageBytesFromFrontend 把粘贴/拖拽的图片字节（base64）直传图床，返回外链 URL。
+func (f *ImageHostingFacade) UploadImageBytesFromFrontend(name string, dataBase64 string) (string, error) {
+	data, err := base64.StdEncoding.DecodeString(dataBase64)
+	if err != nil {
+		return "", fmt.Errorf("图片数据解码失败: %w", err)
+	}
+	return f.svc().UploadImageBytes(name, data)
 }
 
 // TestUpload 上传并删除一张 1x1 测试图，验证当前图床配置是否可用，返回测试图 URL。

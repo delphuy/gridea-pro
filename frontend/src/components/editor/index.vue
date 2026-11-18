@@ -108,9 +108,8 @@ import MathPopover from './ui/MathPopover.vue'
 import type { EditorMode, SourcePaneApi } from './types'
 import { toast } from '@/helpers/toast'
 import { OpenImageDialog } from '@/wailsjs/go/app/App'
-import { UploadImagesFromFrontend, SaveImageBytesFromFrontend } from '@/wailsjs/go/facade/PostFacade'
+import { uploadLocalImage, uploadLocalImageBytes } from '@/helpers/imageUpload'
 import { Polish, Complete, Summary } from '@/wailsjs/go/facade/AIFacade'
-import { domain } from '@/wailsjs/go/models'
 
 const props = withDefaults(defineProps<{ isPostPage?: boolean; placeholder?: string }>(), {
   isPostPage: false,
@@ -247,7 +246,8 @@ function bytesToBase64(bytes: Uint8Array): string {
 
 async function uploadBytes(file: File): Promise<string> {
   const buf = new Uint8Array(await file.arrayBuffer())
-  return SaveImageBytesFromFrontend(file.name || 'image.png', bytesToBase64(buf))
+  // 图床启用时直传图床返回外链；未启用或失败时回退本地附件（helper 内处理）
+  return uploadLocalImageBytes(file.name || 'image.png', bytesToBase64(buf))
 }
 
 function insertImageByPath(path: string) {
@@ -275,9 +275,9 @@ async function pickImageFromDialog() {
   try {
     const filePath = await OpenImageDialog()
     if (!filePath) return
-    const name = filePath.split('/').pop() || filePath.split('\\').pop() || 'image'
-    const paths = await UploadImagesFromFrontend([new domain.UploadedFile({ name, path: filePath })])
-    paths.forEach((p) => insertImageByPath(p))
+    // 图床启用时直传图床插入外链；未启用或失败时回退本地附件（helper 内处理）
+    const path = await uploadLocalImage(filePath)
+    if (path) insertImageByPath(path)
   } catch (err) {
     console.error('[editor] pickImage failed:', err)
     toast.error('上传图片失败')

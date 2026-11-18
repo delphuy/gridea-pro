@@ -16,10 +16,8 @@ import markdown from '@/helpers/markdown'
 import ga from '@/helpers/analytics'
 import { toast } from '@/helpers/toast'
 import { BrowserOpenURL } from '@/wailsjs/runtime'
-import { UploadImagesFromFrontend } from '@/wailsjs/go/facade/PostFacade'
 import { OpenImageDialog } from '@/wailsjs/go/app/App'
-import { UploadImage, GetSetting } from '@/wailsjs/go/facade/ImageHostingFacade'
-import { domain } from '@/wailsjs/go/models'
+import { uploadLocalImage } from '@/helpers/imageUpload'
 
 /** TiptapEditor 暴露给父级的命令式 API（见 components/editor/index.vue defineExpose） */
 export interface TiptapEditorExposed {
@@ -44,9 +42,9 @@ export function useEditorHelper() {
     try {
       const filePath = await OpenImageDialog()
       if (!filePath) return
-      const name = filePath.split('/').pop() || filePath.split('\\').pop() || 'image'
-      const paths = await UploadImagesFromFrontend([new domain.UploadedFile({ name, path: filePath })])
-      paths.forEach((p) => tiptapEditor.value?.insertImageByPath(p))
+      // 图床启用时直传图床插入外链；未启用或失败时回退本地附件（helper 内处理）
+      const path = await uploadLocalImage(filePath)
+      if (path) tiptapEditor.value?.insertImageByPath(path)
     } catch (e) {
       console.error(e)
       toast.error('上传图片失败')
