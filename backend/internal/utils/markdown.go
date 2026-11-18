@@ -39,9 +39,33 @@ func isDangerousURL(dest string) bool {
 	return false
 }
 
+// urlSchemeRe 匹配「已带协议头」的目标（http: https: mailto: tel: data: javascript: …）。
+// scheme 语法参照 RFC 3986：字母开头，后接字母/数字/加号/减号/点。
+var urlSchemeRe = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9+.-]*:`)
+
+// normalizeLinkDest 给漏写协议头的链接目标补全 https://（如 [x](www.baidu.com)、
+// [x](baidu.com)——按相对路径解析会 404）。规则：已带协议头的一律尊重原样
+// （危险协议已在 isDangerousURL 拦截），/ 开头（站内绝对路径）与 # 开头（页内锚点）
+// 不碰，其余一律补。返回空串表示无需处理。
+func normalizeLinkDest(dest string) string {
+	s := strings.TrimLeft(dest, " \t\n\r\x00") // 浏览器解析 URL 时忽略前导空白/控制符
+	if s == "" {
+		return ""
+	}
+	if urlSchemeRe.MatchString(s) {
+		return ""
+	}
+	if strings.HasPrefix(s, "/") || strings.HasPrefix(s, "#") {
+		return ""
+	}
+	return "https://" + s
+}
+
 // linkProtocolGuard 是 goldmark AST Transformer：渲染前把危险协议的链接目标清空，
-// 使 [文字](javascript:...) 发布后不再产出可点击的 href。纵深防御——前端 SafeLink 已在
-// Markdown 落盘前拦截，这里再兜一道，覆盖历史脏数据与非编辑器写入的 .md。
+// 使 [文字](javascript:...) 发布后不再产出可点击的 href；同时给漏写协议头的链接
+// 补全 https://，构建产物里 href 直接是正确的绝对地址。
+// 纵深防御——前端 SafeLink 已在 Markdown 落盘前拦截危险协议，这里再兜一道，
+// 覆盖历史脏数据与非编辑器写入的 .md。
 type linkProtocolGuard struct{}
 
 func (linkProtocolGuard) Transform(node *ast.Document, reader text.Reader, _ parser.Context) {
@@ -52,6 +76,8 @@ func (linkProtocolGuard) Transform(node *ast.Document, reader text.Reader, _ par
 		if link, ok := n.(*ast.Link); ok {
 			if isDangerousURL(string(link.Destination)) {
 				link.Destination = []byte("")
+			} else if patched := normalizeLinkDest(string(link.Destination)); patched != "" {
+				link.Destination = []byte(patched)
 			}
 		}
 		if al, ok := n.(*ast.AutoLink); ok {
