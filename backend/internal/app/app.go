@@ -386,6 +386,29 @@ func (a *App) OpenImageDialog() (string, error) {
 	return res, nil
 }
 
+// OpenImagesDialog 多选图片（图床上传入口），每个被选中的路径同样登记 localfileauth 授权。
+func (a *App) OpenImagesDialog() ([]string, error) {
+	opts := runtime.OpenDialogOptions{
+		Title: "选择图片（可多选）",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "图片文件 (*.jpg;*.png;*.gif;*.webp;*.ico;*.svg)",
+				Pattern:     "*.jpg;*.jpeg;*.png;*.gif;*.webp;*.ico;*.svg;*.JPG;*.JPEG;*.PNG;*.GIF;*.WEBP;*.ICO;*.SVG",
+			},
+		},
+	}
+	res, err := runtime.OpenMultipleFilesDialog(a.ctx, opts)
+	if err != nil {
+		return []string{}, err
+	}
+	for _, p := range res {
+		if p != "" {
+			localfileauth.Authorize(p)
+		}
+	}
+	return res, nil
+}
+
 // OpenKeyFileDialog 选择 SSH 私钥文件
 func (a *App) OpenKeyFileDialog() (string, error) {
 	opts := runtime.OpenDialogOptions{

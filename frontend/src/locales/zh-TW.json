@@ -220,7 +220,7 @@
       "ossBucket": "Bucket",
       "ossBucketPlaceholder": "如 huigg-img",
       "ossEndpoint": "Endpoint",
-      "ossEndpointPlaceholder": "如 oss-cn-shanghai.aliyuncs.com",
+      "ossEndpointPlaceholder": "如 oss-cn-shanghai 或 oss-cn-shanghai.aliyuncs.com",
       "ossPrefix": "物件前綴",
       "ossPrefixPlaceholder": "如 blog/，可留空",
       "ossDomain": "自訂網域",
@@ -235,7 +235,12 @@
       "copied": "圖片 URL 已複製到剪貼簿",
       "copyFailed": "複製失敗",
       "deleteSuccess": "刪除成功",
-      "deleteFailed": "刪除失敗"
+      "deleteFailed": "刪除失敗",
+      "uploadBtn": "上傳圖片",
+      "uploading": "上傳中...",
+      "uploadCopied": "已上傳，圖片 URL 已複製到剪貼簿",
+      "uploadCopiedMulti": "已上傳 {n} 張，圖片 URL 已複製到剪貼簿",
+      "uploadFailed": "上傳失敗"
     },
     "basic": {
       "katexEnabled": "KaTeX 公式渲染",

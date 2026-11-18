@@ -464,7 +464,7 @@
       "ossBucket": "Bucket",
       "ossBucketPlaceholder": "如 huigg-img",
       "ossEndpoint": "Endpoint",
-      "ossEndpointPlaceholder": "如 oss-cn-shanghai.aliyuncs.com",
+      "ossEndpointPlaceholder": "如 oss-cn-shanghai 或 oss-cn-shanghai.aliyuncs.com",
       "ossPrefix": "对象前缀",
       "ossPrefixPlaceholder": "如 blog/，可留空",
       "ossDomain": "自定义域名",
@@ -479,7 +479,12 @@
       "copied": "图片 URL 已复制到剪贴板",
       "copyFailed": "复制失败",
       "deleteSuccess": "删除成功",
-      "deleteFailed": "删除失败"
+      "deleteFailed": "删除失败",
+      "uploadBtn": "上传图片",
+      "uploading": "上传中...",
+      "uploadCopied": "已上传，图片地址已复制到剪贴板",
+      "uploadCopiedMulti": "已上传 {n} 张，图片地址已复制到剪贴板",
+      "uploadFailed": "上传失败"
     },
     "ai": {
       "title": "AI 配置",

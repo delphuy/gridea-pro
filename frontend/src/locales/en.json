@@ -608,7 +608,7 @@
       "ossBucket": "Bucket",
       "ossBucketPlaceholder": "e.g. huigg-img",
       "ossEndpoint": "Endpoint",
-      "ossEndpointPlaceholder": "e.g. oss-cn-shanghai.aliyuncs.com",
+      "ossEndpointPlaceholder": "e.g. oss-cn-shanghai or oss-cn-shanghai.aliyuncs.com",
       "ossPrefix": "Object Prefix",
       "ossPrefixPlaceholder": "e.g. blog/, can be empty",
       "ossDomain": "Custom Domain",
@@ -623,7 +623,12 @@
       "copied": "Image URL copied to clipboard",
       "copyFailed": "Failed to copy",
       "deleteSuccess": "Deleted successfully",
-      "deleteFailed": "Failed to delete"
+      "deleteFailed": "Failed to delete",
+      "uploadBtn": "Upload",
+      "uploading": "Uploading...",
+      "uploadCopied": "Uploaded, image URL copied to clipboard",
+      "uploadCopiedMulti": "Uploaded {n} images, URLs copied to clipboard",
+      "uploadFailed": "Upload failed"
     },
     "loadFailedNoSave": "Failed to load settings. Do not save, or you may overwrite your config with empty values."
   },

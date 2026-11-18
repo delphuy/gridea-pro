@@ -174,6 +174,13 @@
             <h3 class="text-sm font-medium">{{ t('settings.imageHosting.imageBrowser') }}</h3>
             <div class="flex items-center gap-2">
               <Button
+                variant="default"
+                class="h-7 text-xs rounded-full px-3.5 bg-primary text-background hover:bg-primary/90 cursor-pointer"
+                :disabled="uploading || listLoading"
+                @click="uploadImages">
+                {{ uploading ? t('settings.imageHosting.uploading') : t('settings.imageHosting.uploadBtn') }}
+              </Button>
+              <Button
                 variant="outline"
                 class="h-7 text-xs rounded-full px-3.5 border border-primary/20 text-primary/80 hover:bg-primary/5 hover:text-primary cursor-pointer"
                 :disabled="listLoading"
@@ -257,18 +264,23 @@ import FooterBox from '@/components/FooterBox/index.vue'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import { GetSetting, SaveSetting, ListImages, DeleteImage, TestUpload } from '@/wailsjs/go/facade/ImageHostingFacade'
+import { GetSetting, SaveSetting, ListImages, DeleteImage, TestUpload, UploadImagesFromFrontend } from '@/wailsjs/go/facade/ImageHostingFacade'
+import { OpenImagesDialog } from '@/wailsjs/go/app/App'
 import { domain } from '@/wailsjs/go/models'
 import { BrowserOpenURL } from '@/wailsjs/runtime'
 import { ArrowTopRightOnSquareIcon } from '@heroicons/vue/24/outline'
 
 const { t } = useI18n()
 
+// Wails 抛出的 Go 错误是纯字符串（e.message 取不到），统一解包，避免一律只显示「保存失败」。
+const errMsg = (e: any, fallback: string): string => (typeof e === 'string' ? e : e?.message) || fallback
+
 const showSeeKey = ref(false)
 const showGiteeToken = ref(false)
 const showOssSk = ref(false)
 const listLoading = ref(false)
 const testing = ref(false)
+const uploading = ref(false)
 
 const providers = [
   { value: 'see', label: t('settings.imageHosting.providerSee') },
@@ -316,8 +328,9 @@ const loadImages = async (page: number) => {
     }
   } catch (e: any) {
     console.error(e)
-    if (e.message) {
-      toast.error(e.message)
+    const msg = typeof e === 'string' ? e : e?.message
+    if (msg) {
+      toast.error(msg)
     }
   } finally {
     listLoading.value = false
@@ -340,7 +353,7 @@ const deleteImage = async (hash: string) => {
     loadImages(currentPage.value)
   } catch (e: any) {
     console.error(e)
-    toast.error(e.message || t('settings.imageHosting.deleteFailed'))
+    toast.error(errMsg(e, t('settings.imageHosting.deleteFailed')))
   }
 }
 
@@ -391,7 +404,7 @@ const submit = async () => {
     toast.success(t('common.saveSuccess'))
   } catch (e: any) {
     console.error(e)
-    toast.error(e.message || t('common.saveFailed'))
+    toast.error(errMsg(e, t('common.saveFailed')))
   }
 }
 
@@ -405,9 +418,45 @@ const testUpload = async () => {
     toast.success(t('settings.imageHosting.testSuccess'))
   } catch (e: any) {
     console.error(e)
-    toast.error(e.message || t('common.saveFailed'))
+    toast.error(errMsg(e, t('common.saveFailed')))
   } finally {
     testing.value = false
+  }
+}
+
+// 上传图片：先静默保存当前表单（后端读的是已保存配置），多选文件上传到当前图床，
+// 成功后刷新列表并把图片地址复制到剪贴板。
+const uploadImages = async () => {
+  uploading.value = true
+  try {
+    const s = new domain.ImageHostingSetting(buildSettingPayload())
+    await SaveSetting(s)
+    const paths = await OpenImagesDialog()
+    if (!paths || paths.length === 0) return
+    const items = paths.map((p: string) => {
+      const name = p.split(/[\\/]/).pop() || p
+      return new domain.UploadedFile({ name, path: p })
+    })
+    const urls = await UploadImagesFromFrontend(items)
+    await loadImages(1)
+    const text = (urls || []).join('\n')
+    if (text) {
+      try {
+        await navigator.clipboard.writeText(text)
+      } catch {
+        // 剪贴板写入失败不视为上传失败
+      }
+      toast.success(
+        urls.length === 1
+          ? t('settings.imageHosting.uploadCopied')
+          : t('settings.imageHosting.uploadCopiedMulti', { n: urls.length }),
+      )
+    }
+  } catch (e: any) {
+    console.error(e)
+    toast.error(errMsg(e, t('settings.imageHosting.uploadFailed')))
+  } finally {
+    uploading.value = false
   }
 }
 
